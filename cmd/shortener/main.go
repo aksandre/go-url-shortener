@@ -193,4 +193,4 @@ var xhr = new XMLHttpRequest();
 xhr.open("GET", '/MIy3I6N4', true);
 */
 
-// shortenertest -test.v -test.run=^TestIteration1$ -binary-path=cmd/shortener/shortener
+// shortenertest -test.v -test.run=^TestIteration1$ -binary-path=C:\Users\LENOVO\OneDrive\Desktop\golang\project\go-url-shortener\cmd\shortener\shortener\main.exe
