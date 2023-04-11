@@ -22,7 +22,7 @@ func getUrlService(req *http.Request) string {
 	return getProtocolHttp() + "://" + req.Host
 }
 
-func MainPageHandler(serviceShortLink *service.ServiceShortLink) http.Handler {
+func MainPageHandler(serviceShortLink *service.ServiceShortLink) http.HandlerFunc {
 
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 
@@ -67,6 +67,7 @@ func MainPageHandler(serviceShortLink *service.ServiceShortLink) http.Handler {
 				}
 
 			} else {
+				res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 				res.WriteHeader(http.StatusBadRequest)
 				res.Write([]byte("Вызываемый адрес не существует"))
 			}
@@ -100,11 +101,13 @@ func MainPageHandler(serviceShortLink *service.ServiceShortLink) http.Handler {
 						res.WriteHeader(http.StatusTemporaryRedirect)
 					}
 				} else {
+					res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 					res.WriteHeader(http.StatusBadRequest)
 					res.Write([]byte("Вызываемый адрес не существует"))
 				}
 
 			} else {
+				res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 				res.WriteHeader(http.StatusBadRequest)
 				res.Write([]byte("Вызываемый адрес не существует"))
 			}

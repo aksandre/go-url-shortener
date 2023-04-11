@@ -7,22 +7,29 @@ func getPackageError(textError string) error {
 	return errors.New(textModuleError)
 }
 
+type DataStorageShortLink map[string]string
+
+type StorageShortLink struct {
+	Data DataStorageShortLink
+}
+
 func NewStorageShorts() StorageShortLink {
 	return StorageShortLink{
-		Data: make(map[string]string),
+		Data: make(DataStorageShortLink),
 	}
 }
 
-type StorageShortLink struct {
-	Data map[string]string
+func (store *StorageShortLink) SetData(data DataStorageShortLink) (err error) {
+	store.Data = data
+	return
 }
 
-func (store StorageShortLink) AddShortLinkForUrl(fullUrl, shortLink string) (err error) {
+func (store *StorageShortLink) AddShortLinkForUrl(fullUrl, shortLink string) (err error) {
 	store.Data[shortLink] = fullUrl
 	return
 }
 
-func (store StorageShortLink) GetShortLinkByUrl(fullUrl string) (shortLink string, err error) {
+func (store *StorageShortLink) GetShortLinkByUrl(fullUrl string) (shortLink string, err error) {
 
 	for short, urlForShort := range store.Data {
 		if fullUrl == urlForShort {
@@ -33,7 +40,7 @@ func (store StorageShortLink) GetShortLinkByUrl(fullUrl string) (shortLink strin
 	return
 }
 
-func (store StorageShortLink) GetFullLinkByShort(shortLink string) (fullUrl string, err error) {
+func (store *StorageShortLink) GetFullLinkByShort(shortLink string) (fullUrl string, err error) {
 
 	fullUrl, ok := store.Data[shortLink]
 	if !ok {
