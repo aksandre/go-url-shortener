@@ -22,7 +22,7 @@ func getUrlService(req *http.Request) string {
 	return getProtocolHttp() + "://" + req.Host
 }
 
-func MainPageHandler(serviceShortLink *service.ServiceShortLink) http.HandlerFunc {
+func MainPageHandler(serviceShortLink service.ServiceShortInterface) http.HandlerFunc {
 
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 

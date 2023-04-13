@@ -7,14 +7,21 @@ func getPackageError(textError string) error {
 	return errors.New(textModuleError)
 }
 
+type StorageShortInterface interface {
+	GetFullLinkByShort(shortLink string) (fullUrl string, err error)
+	GetShortLinkByUrl(fullUrl string) (shortLink string, err error)
+	AddShortLinkForUrl(fullUrl, shortLink string) (err error)
+	SetData(data DataStorageShortLink) (err error)
+}
+
 type DataStorageShortLink map[string]string
 
 type StorageShortLink struct {
 	Data DataStorageShortLink
 }
 
-func NewStorageShorts() StorageShortLink {
-	return StorageShortLink{
+func NewStorageShorts() StorageShortInterface {
+	return &StorageShortLink{
 		Data: make(DataStorageShortLink),
 	}
 }

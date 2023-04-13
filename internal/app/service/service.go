@@ -14,7 +14,7 @@ func getPackageError(textError string) error {
 	return errors.New(textModuleError)
 }
 
-func NewServiceShortLink(storage *storageShort.StorageShortLink, lengthShortLink int) *ServiceShortLink {
+func NewServiceShortLink(storage storageShort.StorageShortInterface, lengthShortLink int) ServiceShortInterface {
 
 	if lengthShortLink == 0 {
 		lengthShortLink = 8
@@ -26,8 +26,14 @@ func NewServiceShortLink(storage *storageShort.StorageShortLink, lengthShortLink
 	}
 }
 
+type ServiceShortInterface interface {
+	GetServiceLinkByUrl(fullUrl, hostService string) (serviceLink string, err error)
+	GetFullLinkByShort(shortLink string) (fullUrl string, err error)
+	SetLength(length int)
+}
+
 type ServiceShortLink struct {
-	storage         *storageShort.StorageShortLink
+	storage         storageShort.StorageShortInterface
 	lengthShortLink int
 }
 

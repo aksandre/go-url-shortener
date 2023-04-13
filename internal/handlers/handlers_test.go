@@ -24,7 +24,7 @@ func TestMainPageHandler(t *testing.T) {
 	)
 	logger.AppLogger.Printf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
-	var serviceShortLink = service.NewServiceShortLink(&storageShortLink, 8)
+	var serviceShortLink = service.NewServiceShortLink(storageShortLink, 8)
 
 	type want struct {
 		statusCode  int
@@ -35,7 +35,7 @@ func TestMainPageHandler(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		serviceShortLink *service.ServiceShortLink
+		serviceShortLink service.ServiceShortInterface
 		method           string
 		url              string
 		body             string
