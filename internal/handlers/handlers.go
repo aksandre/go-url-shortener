@@ -5,8 +5,9 @@ import (
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/logger"
 	"net/http"
-	"regexp"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func getUrlRequest(req *http.Request) string {
@@ -22,96 +23,89 @@ func getUrlService(req *http.Request) string {
 	return getProtocolHttp() + "://" + req.Host
 }
 
-func MainPageHandler(serviceShortLink service.ServiceShortInterface) http.HandlerFunc {
+type dataHandler struct {
+	service service.ServiceShortInterface
+}
 
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+func (dh dataHandler) getServiceLinkByUrl(res http.ResponseWriter, req *http.Request) {
+	// получаем тело из запроса и проводим его к строке
+	dataBody := req.Body
+	lenBody := req.ContentLength
 
-		if req.URL.Path == "/" {
+	result := make([]byte, lenBody)
+	dataBody.Read(result)
+	dataBody.Close()
 
-			// генерация короткой ссылки
-			if req.Method == http.MethodPost {
-				// получаем тело из запроса и проводим его к строке
-				dataBody := req.Body
-				lenBody := req.ContentLength
+	urlFull := string(result)
+	urlFull = strings.TrimSpace(urlFull)
+	logger.AppLogger.Printf("Для генерации короткой ссылки пришел Url: %s", urlFull)
 
-				result := make([]byte, lenBody)
-				dataBody.Read(result)
-				dataBody.Close()
+	// url сервиса
+	hostService := getUrlService(req)
+	serviceLink, err := dh.service.GetServiceLinkByUrl(urlFull, hostService)
+	logger.AppLogger.Printf("Сделали короткую ссылку: %s", serviceLink)
 
-				urlFull := string(result)
-				urlFull = strings.TrimSpace(urlFull)
-				logger.AppLogger.Printf("Для генерации короткой ссылки пришел Url: %s", urlFull)
+	if err != nil {
+		strError := err.Error()
+		logger.AppLogger.Printf("Ошибка создания короткой ссылки : %s", strError)
 
-				// url сервиса
-				hostService := getUrlService(req)
-				serviceLink, err := serviceShortLink.GetServiceLinkByUrl(urlFull, hostService)
-				logger.AppLogger.Printf("Сделали короткую ссылку: %s", serviceLink)
+		res.Header().Set("Content-Type", "text/plain; charset=8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(strError))
 
-				if err != nil {
-					strError := err.Error()
-					logger.AppLogger.Printf("Ошибка создания короткой ссылки : %s", strError)
+	} else {
+		lenResult := len(serviceLink)
+		strLenResult := fmt.Sprintf("%d", lenResult)
+		res.Header().Set("Content-Length", strLenResult)
+		res.Header().Set("Content-Type", "text/plain; charset=8")
+		res.WriteHeader(http.StatusCreated)
 
-					res.Header().Set("Content-Type", "text/plain; charset=8")
-					res.WriteHeader(http.StatusBadRequest)
-					res.Write([]byte(strError))
+		bytesResult := []byte(serviceLink)
+		res.Write(bytesResult)
+	}
 
-				} else {
-					lenResult := len(serviceLink)
-					strLenResult := fmt.Sprintf("%d", lenResult)
-					res.Header().Set("Content-Length", strLenResult)
-					res.Header().Set("Content-Type", "text/plain; charset=8")
-					res.WriteHeader(http.StatusCreated)
+}
 
-					bytesResult := []byte(serviceLink)
-					res.Write(bytesResult)
-				}
+func (dh dataHandler) getFullLinkByShort(res http.ResponseWriter, req *http.Request) {
+	shortLink := chi.URLParam(req, "shortLink")
+	shortLink = strings.TrimSpace(shortLink)
+	logger.AppLogger.Printf("Пришла короткая ссылка: %s", shortLink)
 
-			} else {
-				res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-				res.WriteHeader(http.StatusBadRequest)
-				res.Write([]byte("Вызываемый адрес не существует"))
-			}
+	fullLink, err := dh.service.GetFullLinkByShort(shortLink)
+	logger.AppLogger.Printf("Получили полную ссылку: %s", fullLink)
 
-		} else {
+	if err != nil {
+		strErr := err.Error()
+		logger.AppLogger.Printf("Ошибка получения полной ссылки: %s", strErr)
 
-			// мы хотим получить тут адреса типа /....
-			re, _ := regexp.Compile(`^/([^/]+)$`)
-			resFind := re.FindAllStringSubmatch(req.URL.Path, -1)
-			if len(resFind) > 0 && len(resFind[0]) > 0 {
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(strErr))
+	} else {
+		res.Header().Set("Location", fullLink)
+		res.WriteHeader(http.StatusTemporaryRedirect)
+	}
+}
 
-				// получение полной ссылки из короткой
-				if req.Method == http.MethodGet {
+func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handler {
 
-					shortLink := resFind[0][1]
-					shortLink = strings.TrimSpace(shortLink)
-					logger.AppLogger.Printf("Пришла короткая ссылка: %s", shortLink)
+	// создаем структуру с данными о сервисе
+	var dataHandler = dataHandler{
+		service: serviceShortLink,
+	}
 
-					fullLink, err := serviceShortLink.GetFullLinkByShort(shortLink)
-					logger.AppLogger.Printf("Получили полную ссылку: %s", fullLink)
+	router := chi.NewRouter()
+	router.Post("/", dataHandler.getServiceLinkByUrl)
+	router.Get("/{shortLink}", dataHandler.getFullLinkByShort)
 
-					if err != nil {
-						strErr := err.Error()
-						logger.AppLogger.Printf("Ошибка получения полной ссылки: %s", strErr)
-
-						res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-						res.WriteHeader(http.StatusBadRequest)
-						res.Write([]byte(strErr))
-					} else {
-						res.Header().Set("Location", fullLink)
-						res.WriteHeader(http.StatusTemporaryRedirect)
-					}
-				} else {
-					res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-					res.WriteHeader(http.StatusBadRequest)
-					res.Write([]byte("Вызываемый адрес не существует"))
-				}
-
-			} else {
-				res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-				res.WriteHeader(http.StatusBadRequest)
-				res.Write([]byte("Вызываемый адрес не существует"))
-			}
-
-		}
+	// когда метод не найден, то 400
+	funcNotFoundMethod := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte("Вызываемый адрес не существует"))
 	})
+	router.NotFound(funcNotFoundMethod)
+	router.MethodNotAllowed(funcNotFoundMethod)
+
+	return router
 }

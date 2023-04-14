@@ -11,11 +11,10 @@ func main() {
 
 	// инициализируем хранилище ссылок
 	var storageShortLink = storageShortlink.NewStorageShorts()
-	var serviceShortLink = service.NewServiceShortLink(&storageShortLink, 8)
+	var serviceShortLink = service.NewServiceShortLink(storageShortLink, 8)
 
-	muxApp := http.NewServeMux()
-	muxApp.Handle(`/`, handlers.MainPageHandler(serviceShortLink))
-	err := http.ListenAndServe(`:8080`, muxApp)
+	handler := handlers.NewRouterHandler(serviceShortLink)
+	err := http.ListenAndServe(`:8080`, handler)
 	if err != nil {
 		panic(err)
 	}
