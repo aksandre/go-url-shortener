@@ -1,6 +1,7 @@
 package service
 
 import (
+	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
 	storageShort "go-url-shortener/internal/storage/storageShortlink"
 
@@ -14,27 +15,25 @@ func getPackageError(textError string) error {
 	return errors.New(textModuleError)
 }
 
-func NewServiceShortLink(storage storageShort.StorageShortInterface, lengthShortLink int) ServiceShortInterface {
-
-	if lengthShortLink == 0 {
-		lengthShortLink = 8
-	}
-
+func NewServiceShortLink(storage storageShort.StorageShortInterface, configApp config.ConfigTypeInterface) ServiceShortInterface {
 	return &ServiceShortLink{
+		configApp:       configApp,
 		storage:         storage,
-		lengthShortLink: lengthShortLink,
+		lengthShortLink: 8,
 	}
 }
 
 type ServiceShortInterface interface {
-	GetServiceLinkByUrl(fullUrl, hostService string) (serviceLink string, err error)
+	GetServiceLinkByUrl(fullUrl string) (serviceLink string, err error)
 	GetFullLinkByShort(shortLink string) (fullUrl string, err error)
+	getHostShortLink() string
 	SetLength(length int)
 }
 
 type ServiceShortLink struct {
 	storage         storageShort.StorageShortInterface
 	lengthShortLink int
+	configApp       config.ConfigTypeInterface
 }
 
 func (service *ServiceShortLink) SetLength(length int) {
@@ -54,11 +53,17 @@ func (service *ServiceShortLink) getRandString(length int) string {
 	return result
 }
 
-func (service *ServiceShortLink) GetServiceLinkByUrl(fullUrl, hostService string) (serviceLink string, err error) {
+func (service ServiceShortLink) getHostShortLink() string {
+	host := service.configApp.GetHostShortLink().String()
+	return host
+}
+
+func (service *ServiceShortLink) GetServiceLinkByUrl(fullUrl string) (serviceLink string, err error) {
 
 	shortLink, err := service.getShortLinkByUrl(fullUrl)
 	if err == nil {
 		if shortLink != "" {
+			hostService := service.getHostShortLink()
 			serviceLink = hostService + "/" + shortLink
 			return
 		}

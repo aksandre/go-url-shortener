@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/logger"
@@ -10,21 +11,84 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func getUrlRequest(req *http.Request) string {
-	url := req.Host + req.URL.Path
-	return url
-}
-
-func getProtocolHttp() string {
-	return "http"
-}
-
-func getUrlService(req *http.Request) string {
-	return getProtocolHttp() + "://" + req.Host
-}
-
 type dataHandler struct {
 	service service.ServiceShortInterface
+}
+
+func (dh dataHandler) getServiceLinkByJson(res http.ResponseWriter, req *http.Request) {
+	// получаем тело из запроса и проводим его к строке
+	dataBody := req.Body
+	lenBody := req.ContentLength
+
+	bytesRawBody := make([]byte, lenBody)
+	dataBody.Read(bytesRawBody)
+	dataBody.Close()
+
+	dataRequest := struct {
+		Url string `json:"url"`
+	}{}
+	err := json.Unmarshal(bytesRawBody, &dataRequest)
+	if err != nil {
+		err = fmt.Errorf("Ошибка получения из запроса URl адреса: %w", err)
+		strError := err.Error()
+		logger.AppLogger.Printf("%s", strError)
+
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(strError))
+		return
+	}
+
+	// получаем адрес для которого формируем короткую ссылку
+	urlFull := string(dataRequest.Url)
+	urlFull = strings.TrimSpace(urlFull)
+
+	if len(urlFull) < 0 {
+
+		strError := "Ошибка создания короткой ссылки: "
+		strError += "В запросе не указан URL, для которого надо сгенерировать короткую ссылку"
+		logger.AppLogger.Printf("%s", strError)
+
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(strError))
+		return
+	}
+
+	logger.AppLogger.Printf("Для генерации короткой ссылки пришел Url: %s", urlFull)
+
+	serviceLink, err := dh.service.GetServiceLinkByUrl(urlFull)
+	logger.AppLogger.Printf("Сделали короткую ссылку: %s", serviceLink)
+
+	if err != nil {
+		err = fmt.Errorf("Ошибка создания короткой ссылки : %w", err)
+		strError := err.Error()
+		logger.AppLogger.Printf("%s", strError)
+
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(strError))
+		return
+
+	} else {
+
+		// данные ответа
+		dataResponse := struct {
+			Result string `json:"result"`
+		}{
+			Result: serviceLink,
+		}
+		bytesResult, _ := json.Marshal(dataResponse)
+
+		lenResult := len(string(bytesResult))
+		strLenResult := fmt.Sprintf("%d", lenResult)
+		res.Header().Set("Content-Length", strLenResult)
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusCreated)
+
+		res.Write(bytesResult)
+	}
+
 }
 
 func (dh dataHandler) getServiceLinkByUrl(res http.ResponseWriter, req *http.Request) {
@@ -40,16 +104,14 @@ func (dh dataHandler) getServiceLinkByUrl(res http.ResponseWriter, req *http.Req
 	urlFull = strings.TrimSpace(urlFull)
 	logger.AppLogger.Printf("Для генерации короткой ссылки пришел Url: %s", urlFull)
 
-	// url сервиса
-	hostService := getUrlService(req)
-	serviceLink, err := dh.service.GetServiceLinkByUrl(urlFull, hostService)
+	serviceLink, err := dh.service.GetServiceLinkByUrl(urlFull)
 	logger.AppLogger.Printf("Сделали короткую ссылку: %s", serviceLink)
 
 	if err != nil {
 		strError := err.Error()
 		logger.AppLogger.Printf("Ошибка создания короткой ссылки : %s", strError)
 
-		res.Header().Set("Content-Type", "text/plain; charset=8")
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write([]byte(strError))
 
@@ -57,7 +119,7 @@ func (dh dataHandler) getServiceLinkByUrl(res http.ResponseWriter, req *http.Req
 		lenResult := len(serviceLink)
 		strLenResult := fmt.Sprintf("%d", lenResult)
 		res.Header().Set("Content-Length", strLenResult)
-		res.Header().Set("Content-Type", "text/plain; charset=8")
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusCreated)
 
 		bytesResult := []byte(serviceLink)
@@ -96,6 +158,7 @@ func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handl
 
 	router := chi.NewRouter()
 	router.Post("/", dataHandler.getServiceLinkByUrl)
+	router.Post("/api/shorten", dataHandler.getServiceLinkByJson)
 	router.Get("/{shortLink}", dataHandler.getFullLinkByShort)
 
 	// когда метод не найден, то 400
@@ -109,3 +172,13 @@ func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handl
 
 	return router
 }
+
+/*
+func getProtocolHttp() string {
+	return "http"
+}
+
+func getUrlService(req *http.Request) string {
+	return getProtocolHttp() + "://" + req.Host
+}
+*/

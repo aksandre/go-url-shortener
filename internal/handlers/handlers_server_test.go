@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"go-url-shortener/internal/app/service"
+	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
 	storageShort "go-url-shortener/internal/storage/storageShortlink"
 	"strings"
@@ -27,13 +28,16 @@ func TestNewRouterHandlerServer(t *testing.T) {
 	)
 	logger.AppLogger.Printf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
-	serviceShortLink := service.NewServiceShortLink(storageShortLink, 8)
+	// Создаем конфиг
+	configApp := config.NewConfigApp()
+	serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)
 
 	// обработчик запросов
 	handlerRouter := NewRouterHandler(serviceShortLink)
 
 	// запускаем тестовый сервер
 	serverTest := httptest.NewServer(handlerRouter)
+	logger.AppLogger.Println("Сервер подняли на адресе: " + serverTest.URL)
 	// останавливаем сервер после завершения теста
 	defer serverTest.Close()
 
@@ -60,7 +64,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			body:             "https://google.com/",
 			want: want{
 				statusCode:  201,
-				contentType: "text/plain; charset=8",
+				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
@@ -71,7 +75,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			body:             "https://google.com/",
 			want: want{
 				statusCode:  http.StatusCreated,
-				contentType: "text/plain; charset=8",
+				contentType: "text/plain; charset=utf-8",
 			},
 		},
 
@@ -83,7 +87,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			body:             "https://dsdsdsdds.com",
 			want: want{
 				statusCode:  http.StatusCreated,
-				contentType: "text/plain; charset=8",
+				contentType: "text/plain; charset=utf-8",
 				body:        "/UUUUUU",
 			},
 		},

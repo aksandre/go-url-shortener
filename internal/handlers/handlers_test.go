@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"go-url-shortener/internal/app/service"
+	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
 	storageShort "go-url-shortener/internal/storage/storageShortlink"
 	"io"
@@ -26,7 +27,9 @@ func TestNewRouterHandler(t *testing.T) {
 	)
 	logger.AppLogger.Printf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
-	serviceShortLink := service.NewServiceShortLink(storageShortLink, 8)
+	// Создаем конфиг
+	configApp := config.NewConfigApp()
+	serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)
 
 	type want struct {
 		statusCode  int
@@ -51,7 +54,7 @@ func TestNewRouterHandler(t *testing.T) {
 			body:             "https://google.com/",
 			want: want{
 				statusCode:  201,
-				contentType: "text/plain; charset=8",
+				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
@@ -62,7 +65,7 @@ func TestNewRouterHandler(t *testing.T) {
 			body:             "https://google.com/",
 			want: want{
 				statusCode:  http.StatusCreated,
-				contentType: "text/plain; charset=8",
+				contentType: "text/plain; charset=utf-8",
 			},
 		},
 
@@ -74,7 +77,7 @@ func TestNewRouterHandler(t *testing.T) {
 			body:             "https://dsdsdsdds.com",
 			want: want{
 				statusCode:  http.StatusCreated,
-				contentType: "text/plain; charset=8",
+				contentType: "text/plain; charset=utf-8",
 				body:        "/UUUUUU",
 			},
 		},
@@ -124,6 +127,18 @@ func TestNewRouterHandler(t *testing.T) {
 			want: want{
 				statusCode:  http.StatusBadRequest,
 				contentType: "text/plain; charset=utf-8",
+			},
+		},
+		{
+			name:             "get short link from JSON request",
+			serviceShortLink: serviceShortLink,
+			method:           http.MethodPost,
+			url:              "/api/shorten",
+			body:             "{\"url\":\"https://dsdsdsdds.com\"}",
+			want: want{
+				statusCode:  201,
+				contentType: "application/json",
+				body:        "{\"result\":\"http://localhost:8080/UUUUUU\"}",
 			},
 		},
 	}
