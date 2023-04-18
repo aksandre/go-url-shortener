@@ -28,10 +28,10 @@ func TestNewRouterHandlerEnv(t *testing.T) {
 			"UUUUUU":   "https://dsdsdsdds.com",
 		},
 	)
-	logger.AppLogger.Printf("Установили данные хранилища ссылок: %+v", storageShortLink)
+	logger.GetLogger().Printf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
 	// Создаем конфиг
-	configApp := config.NewConfigApp()
+	configApp := config.GetAppConfig()
 	serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)
 
 	// обработчик запросов
@@ -39,7 +39,7 @@ func TestNewRouterHandlerEnv(t *testing.T) {
 
 	// запускаем тестовый сервер
 	serverTest := httptest.NewServer(handlerRouter)
-	logger.AppLogger.Println("Сервер подняли на адресе: " + serverTest.URL)
+	logger.GetLogger().Println("Сервер подняли на адресе: " + serverTest.URL)
 	// останавливаем сервер после завершения теста
 	defer serverTest.Close()
 

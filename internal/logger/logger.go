@@ -1,9 +1,10 @@
 package logger
 
 import (
+	"fmt"
+	"go-url-shortener/internal/config"
 	"log"
 	"os"
-	"path/filepath"
 )
 
 // тип нашего логера приложения
@@ -12,24 +13,55 @@ type TypeAppLogger struct {
 }
 
 // переменная логера
-var AppLogger TypeAppLogger
+var appLogger TypeAppLogger
 
-func init() {
+// Маркер синглтона, что сущность, уже инициировали
+var setupLogger = false
 
-	wd, err := os.Getwd()
-	if err != nil {
-		panic(err)
+func GetLogger() TypeAppLogger {
+	if setupLogger == false {
+		initLogger()
+		setupLogger = true
 	}
-	parent := filepath.Dir(wd)
-	parent = filepath.Dir(parent)
+	return appLogger
+}
 
-	logDir := parent + "/logs"
+// инициализация сущности
+func initLogger() {
 
+	mainFolderLog := config.GetAppConfig().GetLogsPath()
+	logAppDir, err := getFolderLogs(mainFolderLog)
+	if err != nil {
+		fmt.Println(err)
+	}
+	// путь до файла с логом
+	pathLogFile := logAppDir + "/appLog.log"
+
+	loggerBase := createBaseLogger(pathLogFile)
+	appLogger = TypeAppLogger{
+		loggerBase,
+	}
+
+}
+
+func getFolderLogs(mainFolderLog string) (logAppDir string, err error) {
+	logGoDir := mainFolderLog + "/goLogs"
+	err = createFolder(logGoDir)
+	if err != nil {
+		return
+	}
+
+	logAppDir = logGoDir + "/urlShortener"
+	err = createFolder(logAppDir)
+	return
+}
+
+func createFolder(folderPath string) error {
 	// создаем папку logs в корне проекта
-	_, err = os.Stat(logDir)
+	_, err := os.Stat(folderPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = os.Mkdir(logDir, 0755)
+			err = os.Mkdir(folderPath, 0755)
 			if err != nil {
 				panic(err)
 			}
@@ -37,17 +69,10 @@ func init() {
 			// другая ошибка
 		}
 	}
-
-	// путь до файла с логом
-	pathLogFile := logDir + "/appLog.log"
-
-	AppLogger = TypeAppLogger{
-		createLogger(pathLogFile),
-	}
-
+	return err
 }
 
-func createLogger(pathToFileLog string) *log.Logger {
+func createBaseLogger(pathToFileLog string) *log.Logger {
 
 	f, err := os.OpenFile(pathToFileLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	//f, err := os.OpenFile("./logs/info.log", os.O_RDWR|os.O_CREATE, 0666)

@@ -7,20 +7,13 @@ import (
 	"go-url-shortener/internal/logger"
 	"go-url-shortener/internal/storage/storageShortlink"
 	"net/http"
-
-	flag "github.com/spf13/pflag"
 )
-
-func installConfig() config.ConfigTypeInterface {
-	configApp := config.NewConfigApp()
-	flag.Parse()
-	return configApp
-}
 
 func main() {
 
-	// Создаем конфиг
-	configApp := installConfig()
+	// Получаем конфиг
+	configApp := config.GetAppConfig()
+	logger.GetLogger().Printf("Настройки конфигурации:  %+v", configApp)
 
 	// инициализируем хранилище ссылок
 	var storageShortLink = storageShortlink.NewStorageShorts()
@@ -28,7 +21,7 @@ func main() {
 
 	// Адрес сервера из конфига
 	addrServer := configApp.GetAddrServer()
-	logger.AppLogger.Printf("Поднимаем сервер по адресу:  %s", addrServer)
+	logger.GetLogger().Printf("Поднимаем сервер по адресу:  %s", addrServer)
 
 	handler := handlers.NewRouterHandler(serviceShortLink)
 	err := http.ListenAndServe(addrServer, handler)
@@ -63,3 +56,5 @@ xhr.open("GET", '/MIy3I6N4', true);
 // go run cmd/shortener/main.go --a="localhost:8010" --b="https://serviceshort.ru:8020"
 // go run cmd/shortener/main.go --a="localhost:8080" --b="http://localhost:8080"
 // shortenertest -test.v -test.run=^TestIteration1$ -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
+// shortenertest -test.v -test.run=^TestIteration4$ -source-path=. -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
+// shortenertest -test.v -test.run=^TestIteration5$ -binary-path=cmd/shortener/shortener -server-host=localhost -server-port=8050 -server-base-url="http://localhost:8050"

@@ -96,19 +96,44 @@ func (hsl *hostShortLink) Type() string {
 	return "hostShortLink"
 }
 
-// Глобальные переменные флагов
-// Сделаем эспортируемыми, чтобы можно было управлять в тестах
-var AddressServerFlag = &addressServer{
-	host: "localhost",
-	port: 8080,
-}
-var HostShortLinkFlag = &hostShortLink{
-	protocol: "http",
-	host:     "localhost",
-	port:     8080,
+type FlagConfigType struct {
+	AddressServer *addressServer
+	HostShortLink *hostShortLink
 }
 
-func init() {
-	flag.Var(AddressServerFlag, "a", "Адрес сервера")
-	flag.Var(HostShortLinkFlag, "b", "Базовый адрес для формирования короткой ссылки")
+// Глобальные переменные окружения
+// Сделаем эспортируемыми, чтобы можно было управлять в тестах
+var flagConfig = FlagConfigType{
+	AddressServer: &addressServer{
+		host: "localhost",
+		port: 8080,
+	},
+	HostShortLink: &hostShortLink{
+		protocol: "http",
+		host:     "localhost",
+		port:     8080,
+	},
+}
+
+// Маркер синглтона, что сущность, уже инициировали
+var setupFlags = false
+
+func GetFlagConfig() FlagConfigType {
+	if setupFlags == false {
+		initFlags()
+		setupFlags = true
+	}
+	return flagConfig
+}
+
+func SetFlagConfig(config FlagConfigType) {
+	setupFlags = true
+	flagConfig = config
+}
+
+// инициализация сущности
+func initFlags() {
+	flag.Var(flagConfig.AddressServer, "a", "Адрес сервера")
+	flag.Var(flagConfig.HostShortLink, "b", "Базовый адрес для формирования короткой ссылки")
+	flag.Parse()
 }

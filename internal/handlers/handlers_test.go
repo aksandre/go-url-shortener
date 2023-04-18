@@ -25,10 +25,10 @@ func TestNewRouterHandler(t *testing.T) {
 			"UUUUUU":   "https://dsdsdsdds.com",
 		},
 	)
-	logger.AppLogger.Printf("Установили данные хранилища ссылок: %+v", storageShortLink)
+	logger.GetLogger().Printf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
 	// Создаем конфиг
-	configApp := config.NewConfigApp()
+	configApp := config.GetAppConfig()
 	serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)
 
 	type want struct {
