@@ -27,7 +27,7 @@ func main() {
 	var serviceShortLink = service.NewServiceShortLink(storageShortLink, configApp)
 
 	// Адрес сервера из конфига
-	addrServer := configApp.GetAddrServer().String()
+	addrServer := configApp.GetAddrServer()
 	logger.AppLogger.Printf("Поднимаем сервер по адресу:  %s", addrServer)
 
 	handler := handlers.NewRouterHandler(serviceShortLink)
@@ -46,7 +46,7 @@ xhr.setRequestHeader('Content-Type', 'text/plain');
 xhr.send(body);
 
 var xhr = new XMLHttpRequest();
-var body = {"url":"https://pract.yandex.ru/"};
+var body = '{"url":"https://pract.yandex.ru/"}'
 xhr.open("POST", '/api/shorten', true);
 xhr.setRequestHeader('Content-Type', 'application/json');
 //xhr.onreadystatechange = ...;
@@ -55,6 +55,9 @@ xhr.send(body);
 var xhr = new XMLHttpRequest();
 xhr.open("GET", '/MIy3I6N4', true);
 */
+
+// SET SERVER_ADDRESS=localhost:8045
+// SET BASE_URL=https://localhost:8041/hhhh/
 
 // go build -o shortener.exe
 // go run cmd/shortener/main.go --a="localhost:8010" --b="https://serviceshort.ru:8020"

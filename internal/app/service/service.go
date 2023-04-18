@@ -54,7 +54,7 @@ func (service *ServiceShortLink) getRandString(length int) string {
 }
 
 func (service ServiceShortLink) getHostShortLink() string {
-	host := service.configApp.GetHostShortLink().String()
+	host := service.configApp.GetHostShortLink()
 	return host
 }
 

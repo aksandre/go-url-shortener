@@ -96,7 +96,8 @@ func (hsl *hostShortLink) Type() string {
 	return "hostShortLink"
 }
 
-// глобальные переменные флагов
+// Глобальные переменные флагов
+// Сделаем эспортируемыми, чтобы можно было управлять в тестах
 var AddressServerFlag = &addressServer{
 	host: "localhost",
 	port: 8080,

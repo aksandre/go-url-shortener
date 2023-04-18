@@ -1,32 +1,58 @@
 package config
 
+import (
+	"go-url-shortener/internal/logger"
+)
+
 type ConfigTypeInterface interface {
-	installFlags()
-	GetAddrServer() *addressServer
-	GetHostShortLink() *hostShortLink
+	install()
+	GetAddrServer() string
+	GetHostShortLink() string
+	SetAddrServer(string)
+	SetHostShortLink(string)
 }
 
-type сonfigType struct {
-	addrServer    *addressServer
-	hostShortLink *hostShortLink
+// Тип для хранения конфигурации приложения
+// Экспортируемая - для мокирования
+type ConfigType struct {
+	addrServer    string
+	hostShortLink string
 }
 
-func (ct *сonfigType) installFlags() {
-	ct.addrServer = AddressServerFlag
-	ct.hostShortLink = HostShortLinkFlag
+func (ct *ConfigType) install() {
+
+	ct.addrServer = AddressServerFlag.String()
+	if EnviromentConfig.AddressServer != "" {
+		ct.addrServer = EnviromentConfig.AddressServer
+	}
+
+	ct.hostShortLink = HostShortLinkFlag.String()
+	if EnviromentConfig.HostShortLink != "" {
+		ct.hostShortLink = EnviromentConfig.HostShortLink
+	}
+
+	logger.AppLogger.Printf("Данные конфигурации:  %+v", ct)
 }
 
-func (ct *сonfigType) GetAddrServer() *addressServer {
+func (ct *ConfigType) GetAddrServer() string {
 	return ct.addrServer
 }
 
-func (ct *сonfigType) GetHostShortLink() *hostShortLink {
+func (ct *ConfigType) SetHostShortLink(value string) {
+	ct.hostShortLink = value
+}
+
+func (ct *ConfigType) SetAddrServer(value string) {
+	ct.addrServer = value
+}
+
+func (ct *ConfigType) GetHostShortLink() string {
 	return ct.hostShortLink
 }
 
 func NewConfigApp() ConfigTypeInterface {
 	// переменная конфига
-	configApp := &сonfigType{}
-	configApp.installFlags()
+	configApp := &ConfigType{}
+	configApp.install()
 	return configApp
 }

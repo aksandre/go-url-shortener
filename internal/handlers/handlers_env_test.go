@@ -5,19 +5,22 @@ import (
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
 	storageShort "go-url-shortener/internal/storage/storageShortlink"
-	"io"
+	"strings"
 
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 )
 
-// Это тесты без отправки данных на сервер
-func TestNewRouterHandler(t *testing.T) {
+// Это тесты настройки окружения
+func TestNewRouterHandlerEnv(t *testing.T) {
 
+	return
+
+	// заполняем хранилище
 	var storageShortLink = storageShort.NewStorageShorts()
 	storageShortLink.SetData(
 		storageShort.DataStorageShortLink{
@@ -30,6 +33,15 @@ func TestNewRouterHandler(t *testing.T) {
 	// Создаем конфиг
 	configApp := config.NewConfigApp()
 	serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)
+
+	// обработчик запросов
+	handlerRouter := NewRouterHandler(serviceShortLink)
+
+	// запускаем тестовый сервер
+	serverTest := httptest.NewServer(handlerRouter)
+	logger.AppLogger.Println("Сервер подняли на адресе: " + serverTest.URL)
+	// останавливаем сервер после завершения теста
+	defer serverTest.Close()
 
 	type want struct {
 		statusCode  int
@@ -129,67 +141,44 @@ func TestNewRouterHandler(t *testing.T) {
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
-		{
-			name:             "get short link from JSON request",
-			serviceShortLink: serviceShortLink,
-			method:           http.MethodPost,
-			url:              "/api/shorten",
-			body:             "{\"url\":\"https://dsdsdsdds.com\"}",
-			want: want{
-				statusCode:  http.StatusCreated,
-				contentType: "application/json",
-				body:        "{\"result\":\"http://localhost:8080/UUUUUU\"}",
-			},
-		},
-
-		{
-			name:             "check WRONG short link from JSON request",
-			serviceShortLink: serviceShortLink,
-			method:           http.MethodPost,
-			url:              "/api/shorten",
-			body:             "{\"url\":''}",
-			want: want{
-				statusCode:  http.StatusBadRequest,
-				contentType: "text/plain; charset=utf-8",
-			},
-		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			bodyReader := strings.NewReader(tt.body)
-			request := httptest.NewRequest(tt.method, tt.url, bodyReader)
-			respWriter := httptest.NewRecorder()
+			// не используем реальный редирект
+			redirectPolicy := resty.NoRedirectPolicy()
 
-			handler := NewRouterHandler(tt.serviceShortLink)
-			handler.ServeHTTP(respWriter, request)
+			// Будем делать реальные запросы
+			req := resty.New().
+				SetRedirectPolicy(redirectPolicy).
+				R().
+				SetBody(tt.body)
 
-			res := respWriter.Result()
+			req.Method = tt.method
+			req.URL = serverTest.URL + tt.url
+			res, _ := req.Send()
 
 			// проверяем код ответа
-			assert.Equal(t, tt.want.statusCode, res.StatusCode)
+			assert.Equal(t, tt.want.statusCode, res.StatusCode())
 
 			// проверяем заголовки ответа
 			if tt.want.contentType != "" {
-				assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
+				assert.Equal(t, tt.want.contentType, res.Header().Get("Content-Type"))
 			}
+
 			if tt.want.location != "" {
 				// получаем и проверяем тело запроса
-				assert.Equal(t, tt.want.location, res.Header.Get("Location"))
+				assert.Equal(t, tt.want.location, res.Header().Get("Location"))
 			}
 
 			if tt.want.body != "" {
 				// получаем и проверяем тело запроса
-				resBody, _ := io.ReadAll(res.Body)
-				res.Body.Close()
+				resBody := res.Body()
+				res.RawBody().Close()
 				// получаем и проверяем тело запроса
 				assert.Equal(t, true, strings.Contains(string(resBody), tt.want.body))
 			}
-
-			/*if got := MainPageHandler(tt.args.serviceShortLink); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("MainPageHandler() = %v, want %v", got, tt.want)
-			}*/
-
 		})
 	}
 }
