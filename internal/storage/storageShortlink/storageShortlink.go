@@ -14,6 +14,7 @@ type StorageShortInterface interface {
 	SetData(data DataStorageShortLink) (err error)
 }
 
+// Хранилище коротких ссылок
 type DataStorageShortLink map[string]string
 
 type StorageShortLink struct {

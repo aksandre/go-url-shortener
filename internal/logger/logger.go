@@ -28,22 +28,24 @@ func GetLogger() TypeAppLogger {
 
 // инициализация сущности
 func initLogger() {
-
 	mainFolderLog := config.GetAppConfig().GetLogsPath()
 	logAppDir, err := getFolderLogs(mainFolderLog)
+
+	// путь до файла с логом
+	pathLogFile := "/appLog.log"
 	if err != nil {
 		fmt.Println(err)
+	} else {
+		pathLogFile = logAppDir + "/appLog.log"
 	}
-	// путь до файла с логом
-	pathLogFile := logAppDir + "/appLog.log"
 
 	loggerBase := createBaseLogger(pathLogFile)
 	appLogger = TypeAppLogger{
 		loggerBase,
 	}
-
 }
 
+// Получение пути до папки с логами
 func getFolderLogs(mainFolderLog string) (logAppDir string, err error) {
 	logGoDir := mainFolderLog + "/goLogs"
 	err = createFolder(logGoDir)
@@ -56,6 +58,7 @@ func getFolderLogs(mainFolderLog string) (logAppDir string, err error) {
 	return
 }
 
+// Созадние папки по указанному пути
 func createFolder(folderPath string) error {
 	// создаем папку logs в корне проекта
 	_, err := os.Stat(folderPath)
@@ -72,14 +75,13 @@ func createFolder(folderPath string) error {
 	return err
 }
 
+// Создание объекта Логера из стандартной библиотеки
 func createBaseLogger(pathToFileLog string) *log.Logger {
 
 	f, err := os.OpenFile(pathToFileLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	//f, err := os.OpenFile("./logs/info.log", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
 	//defer f.Close()
-
 	return log.New(f, "Logger:", log.Ldate|log.Ltime)
 }

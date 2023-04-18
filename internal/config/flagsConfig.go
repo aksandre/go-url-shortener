@@ -96,6 +96,7 @@ func (hsl *hostShortLink) Type() string {
 	return "hostShortLink"
 }
 
+// Тип для хранения флагов запуска приложения
 type FlagConfigType struct {
 	AddressServer *addressServer
 	HostShortLink *hostShortLink

@@ -15,6 +15,7 @@ func getPackageError(textError string) error {
 	return errors.New(textModuleError)
 }
 
+// создание сервис коротких ссылок
 func NewServiceShortLink(storage storageShort.StorageShortInterface, configApp config.ConfigTypeInterface) ServiceShortInterface {
 	return &ServiceShortLink{
 		configApp:       configApp,
@@ -40,6 +41,7 @@ func (service *ServiceShortLink) SetLength(length int) {
 	service.lengthShortLink = length
 }
 
+// Получаем рандомную строку
 func (service *ServiceShortLink) getRandString(length int) string {
 	chars := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
 		"abcdefghijklmnopqrstuvwxyz" +
@@ -53,11 +55,13 @@ func (service *ServiceShortLink) getRandString(length int) string {
 	return result
 }
 
+// Получаем хост открытия коротких ссылок
 func (service ServiceShortLink) getHostShortLink() string {
 	host := service.configApp.GetHostShortLink()
 	return host
 }
 
+// Получаем короткую ссылку с хостом по Url-адресу
 func (service *ServiceShortLink) GetServiceLinkByUrl(fullUrl string) (serviceLink string, err error) {
 
 	shortLink, err := service.getShortLinkByUrl(fullUrl)
@@ -72,6 +76,7 @@ func (service *ServiceShortLink) GetServiceLinkByUrl(fullUrl string) (serviceLin
 	return
 }
 
+// Генерируем короткую ссылку по Url-адресу
 func (service *ServiceShortLink) getShortLinkByUrl(fullUrl string) (shortLink string, err error) {
 
 	shortLink, err = service.storage.GetShortLinkByUrl(fullUrl)
@@ -94,6 +99,7 @@ func (service *ServiceShortLink) getShortLinkByUrl(fullUrl string) (shortLink st
 	return
 }
 
+// Получаем Url-адрес по короткой ссылке
 func (service *ServiceShortLink) GetFullLinkByShort(shortLink string) (fullUrl string, err error) {
 
 	fullUrl, err = service.storage.GetFullLinkByShort(shortLink)

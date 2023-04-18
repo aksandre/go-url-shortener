@@ -6,6 +6,7 @@ import (
 	env "github.com/caarlos0/env/v8"
 )
 
+// Тип для хранения переменных окружения
 type EnviromentConfigType struct {
 	AddressServer string `env:"SERVER_ADDRESS"`
 	HostShortLink string `env:"BASE_URL"`

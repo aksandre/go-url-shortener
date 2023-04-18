@@ -11,10 +11,12 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Тип обрабочика маршрутов
 type dataHandler struct {
 	service service.ServiceShortInterface
 }
 
+// Генерация короткой ссылки по Json запросу
 func (dh dataHandler) getServiceLinkByJson(res http.ResponseWriter, req *http.Request) {
 	// получаем тело из запроса и проводим его к строке
 	dataBody := req.Body
@@ -91,6 +93,7 @@ func (dh dataHandler) getServiceLinkByJson(res http.ResponseWriter, req *http.Re
 
 }
 
+// Генерация короткой ссылки по Url в текстовом виде
 func (dh dataHandler) getServiceLinkByUrl(res http.ResponseWriter, req *http.Request) {
 	// получаем тело из запроса и проводим его к строке
 	dataBody := req.Body
@@ -128,6 +131,7 @@ func (dh dataHandler) getServiceLinkByUrl(res http.ResponseWriter, req *http.Req
 
 }
 
+// Получение Url-адреса по короткой ссылке
 func (dh dataHandler) getFullLinkByShort(res http.ResponseWriter, req *http.Request) {
 	shortLink := chi.URLParam(req, "shortLink")
 	shortLink = strings.TrimSpace(shortLink)
@@ -149,6 +153,7 @@ func (dh dataHandler) getFullLinkByShort(res http.ResponseWriter, req *http.Requ
 	}
 }
 
+// создание обработчика запросов
 func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handler {
 
 	// создаем структуру с данными о сервисе
@@ -172,13 +177,3 @@ func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handl
 
 	return router
 }
-
-/*
-func getProtocolHttp() string {
-	return "http"
-}
-
-func getUrlService(req *http.Request) string {
-	return getProtocolHttp() + "://" + req.Host
-}
-*/
