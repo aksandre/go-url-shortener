@@ -1,20 +1,20 @@
-package storageShortlink
+package storageshortlink
 
 import "errors"
 
 func getPackageError(textError string) error {
-	textModuleError := "storageShortlinks: " + textError
+	textModuleError := "storageshortlink: " + textError
 	return errors.New(textModuleError)
 }
 
 type StorageShortInterface interface {
-	GetFullLinkByShort(shortLink string) (fullUrl string, err error)
-	GetShortLinkByUrl(fullUrl string) (shortLink string, err error)
-	AddShortLinkForUrl(fullUrl, shortLink string) (err error)
+	GetFullLinkByShort(shortLink string) (fullURL string, err error)
+	GetShortLinkByURL(fullURL string) (shortLink string, err error)
+	AddShortLinkForURL(fullURL, shortLink string) (err error)
 	SetData(data DataStorageShortLink) (err error)
 }
 
-// Хранилище коротких ссылок
+// Хранилище коротких ссылок в памяти
 type DataStorageShortLink map[string]string
 
 type StorageShortLink struct {
@@ -32,15 +32,15 @@ func (store *StorageShortLink) SetData(data DataStorageShortLink) (err error) {
 	return
 }
 
-func (store *StorageShortLink) AddShortLinkForUrl(fullUrl, shortLink string) (err error) {
-	store.Data[shortLink] = fullUrl
+func (store *StorageShortLink) AddShortLinkForURL(fullURL, shortLink string) (err error) {
+	store.Data[shortLink] = fullURL
 	return
 }
 
-func (store *StorageShortLink) GetShortLinkByUrl(fullUrl string) (shortLink string, err error) {
+func (store *StorageShortLink) GetShortLinkByURL(fullURL string) (shortLink string, err error) {
 
 	for short, urlForShort := range store.Data {
-		if fullUrl == urlForShort {
+		if fullURL == urlForShort {
 			shortLink = short
 			break
 		}
@@ -48,9 +48,9 @@ func (store *StorageShortLink) GetShortLinkByUrl(fullUrl string) (shortLink stri
 	return
 }
 
-func (store *StorageShortLink) GetFullLinkByShort(shortLink string) (fullUrl string, err error) {
+func (store *StorageShortLink) GetFullLinkByShort(shortLink string) (fullURL string, err error) {
 
-	fullUrl, ok := store.Data[shortLink]
+	fullURL, ok := store.Data[shortLink]
 	if !ok {
 		// должны показать ошибку
 		err = getPackageError("Короткая ссылка " + shortLink + " не зарегистрирована")

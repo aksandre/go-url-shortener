@@ -4,7 +4,7 @@ import (
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
-	storageShort "go-url-shortener/internal/storage/storageShortlink"
+	storageShort "go-url-shortener/internal/storage/storageshortlink"
 	"strings"
 
 	"net/http"

@@ -25,7 +25,7 @@ func (as *addressServer) String() string {
 func (as *addressServer) Set(strValue string) (err error) {
 
 	if len(strValue) == 0 {
-		err = errors.New("Передано пустое значение адреса сервера в аргументах командной строки, пример: localhost:8090")
+		err = errors.New("передано пустое значение адреса сервера в аргументах командной строки, пример: localhost:8090")
 		return
 	}
 
@@ -33,13 +33,14 @@ func (as *addressServer) Set(strValue string) (err error) {
 
 	if len(patrsString) > 1 {
 		as.host = string(patrsString[0])
-		intPort, err := strconv.ParseInt(patrsString[1], 0, 0)
-		if err != nil {
-			err = fmt.Errorf(`Не удалось получить порт сервера (%s): %w`, strValue, err)
+		intPort, errParse := strconv.ParseInt(patrsString[1], 0, 0)
+		if errParse != nil {
+			err = fmt.Errorf("не удалось получить порт сервера (%s): %w", strValue, errParse)
+		} else {
+			as.port = int(intPort)
 		}
-		as.port = int(intPort)
 	} else {
-		err = errors.New("Некорректное значение адреса сервера в аргументах командной строки, пример: localhost:8090")
+		err = errors.New("некорректное значение адреса сервера в аргументах командной строки, пример: localhost:8090")
 	}
 
 	return
@@ -67,7 +68,7 @@ func (hsl *hostShortLink) String() string {
 func (hsl *hostShortLink) Set(strValue string) (err error) {
 
 	if len(strValue) == 0 {
-		err = errors.New("Передан пустой базовый адрес для формирования короткой ссылки, пример: http://localhost:8000")
+		err = errors.New("передан пустой базовый адрес для формирования короткой ссылки, пример: http://localhost:8000")
 		return
 	}
 
@@ -78,16 +79,17 @@ func (hsl *hostShortLink) Set(strValue string) (err error) {
 		patrs2String := strings.Split(patrsString[1], ":")
 		if len(patrs2String) > 1 {
 			hsl.host = string(patrs2String[0])
-			intPort, err := strconv.ParseInt(patrs2String[1], 0, 0)
-			if err != nil {
-				err = fmt.Errorf(`Не удалось получить порт сервера (%s): %w`, strValue, err)
+			intPort, errParse := strconv.ParseInt(patrs2String[1], 0, 0)
+			if errParse != nil {
+				err = fmt.Errorf(`не удалось получить порт сервера (%s): %w`, strValue, errParse)
+			} else {
+				hsl.port = int(intPort)
 			}
-			hsl.port = int(intPort)
 		} else {
-			err = errors.New("Некорректное значение адреса сервера в аргументах командной строки")
+			err = errors.New("некорректное значение адреса сервера в аргументах командной строки")
 		}
 	} else {
-		err = errors.New("Некорректный базовый адрес для формирования короткой ссылки, пример: http://localhost:8000")
+		err = errors.New("некорректный базовый адрес для формирования короткой ссылки, пример: http://localhost:8000")
 	}
 	return
 }
@@ -120,7 +122,7 @@ var flagConfig = FlagConfigType{
 var setupFlags = false
 
 func GetFlagConfig() FlagConfigType {
-	if setupFlags == false {
+	if !setupFlags {
 		initFlags()
 		setupFlags = true
 	}

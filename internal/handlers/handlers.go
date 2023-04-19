@@ -17,7 +17,7 @@ type dataHandler struct {
 }
 
 // Генерация короткой ссылки по Json запросу
-func (dh dataHandler) getServiceLinkByJson(res http.ResponseWriter, req *http.Request) {
+func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Request) {
 	// получаем тело из запроса и проводим его к строке
 	dataBody := req.Body
 	lenBody := req.ContentLength
@@ -27,11 +27,11 @@ func (dh dataHandler) getServiceLinkByJson(res http.ResponseWriter, req *http.Re
 	dataBody.Close()
 
 	dataRequest := struct {
-		Url string `json:"url"`
+		URL string `json:"url"`
 	}{}
 	err := json.Unmarshal(bytesRawBody, &dataRequest)
 	if err != nil {
-		err = fmt.Errorf("Ошибка получения из запроса URl адреса: %w", err)
+		err = fmt.Errorf("ошибка получения из запроса URl адреса: %w", err)
 		strError := err.Error()
 		logger.GetLogger().Printf("%s", strError)
 
@@ -42,10 +42,10 @@ func (dh dataHandler) getServiceLinkByJson(res http.ResponseWriter, req *http.Re
 	}
 
 	// получаем адрес для которого формируем короткую ссылку
-	urlFull := string(dataRequest.Url)
+	urlFull := string(dataRequest.URL)
 	urlFull = strings.TrimSpace(urlFull)
 
-	if len(urlFull) < 0 {
+	if len(urlFull) == 0 {
 
 		strError := "Ошибка создания короткой ссылки: "
 		strError += "В запросе не указан URL, для которого надо сгенерировать короткую ссылку"
@@ -59,11 +59,11 @@ func (dh dataHandler) getServiceLinkByJson(res http.ResponseWriter, req *http.Re
 
 	logger.GetLogger().Printf("Для генерации короткой ссылки пришел Url: %s", urlFull)
 
-	serviceLink, err := dh.service.GetServiceLinkByUrl(urlFull)
+	serviceLink, err := dh.service.GetServiceLinkByURL(urlFull)
 	logger.GetLogger().Printf("Сделали короткую ссылку: %s", serviceLink)
 
 	if err != nil {
-		err = fmt.Errorf("Ошибка создания короткой ссылки : %w", err)
+		err = fmt.Errorf("ошибка создания короткой ссылки : %w", err)
 		strError := err.Error()
 		logger.GetLogger().Printf("%s", strError)
 
@@ -94,7 +94,7 @@ func (dh dataHandler) getServiceLinkByJson(res http.ResponseWriter, req *http.Re
 }
 
 // Генерация короткой ссылки по Url в текстовом виде
-func (dh dataHandler) getServiceLinkByUrl(res http.ResponseWriter, req *http.Request) {
+func (dh dataHandler) getServiceLinkByURL(res http.ResponseWriter, req *http.Request) {
 	// получаем тело из запроса и проводим его к строке
 	dataBody := req.Body
 	lenBody := req.ContentLength
@@ -107,7 +107,7 @@ func (dh dataHandler) getServiceLinkByUrl(res http.ResponseWriter, req *http.Req
 	urlFull = strings.TrimSpace(urlFull)
 	logger.GetLogger().Printf("Для генерации короткой ссылки пришел Url: %s", urlFull)
 
-	serviceLink, err := dh.service.GetServiceLinkByUrl(urlFull)
+	serviceLink, err := dh.service.GetServiceLinkByURL(urlFull)
 	logger.GetLogger().Printf("Сделали короткую ссылку: %s", serviceLink)
 
 	if err != nil {
@@ -162,8 +162,8 @@ func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handl
 	}
 
 	router := chi.NewRouter()
-	router.Post("/", dataHandler.getServiceLinkByUrl)
-	router.Post("/api/shorten", dataHandler.getServiceLinkByJson)
+	router.Post("/", dataHandler.getServiceLinkByURL)
+	router.Post("/api/shorten", dataHandler.getServiceLinkByJSON)
 	router.Get("/{shortLink}", dataHandler.getFullLinkByShort)
 
 	// когда метод не найден, то 400

@@ -21,7 +21,7 @@ var enviromentConfig = EnviromentConfigType{}
 var setupEnviroment = false
 
 func GetEnviromentConfig() EnviromentConfigType {
-	if setupEnviroment == false {
+	if !setupEnviroment {
 		initEnviroment()
 		setupEnviroment = true
 	}

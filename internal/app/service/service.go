@@ -3,7 +3,7 @@ package service
 import (
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
-	storageShort "go-url-shortener/internal/storage/storageShortlink"
+	storageShort "go-url-shortener/internal/storage/storageshortlink"
 
 	"errors"
 	"math/rand"
@@ -25,8 +25,8 @@ func NewServiceShortLink(storage storageShort.StorageShortInterface, configApp c
 }
 
 type ServiceShortInterface interface {
-	GetServiceLinkByUrl(fullUrl string) (serviceLink string, err error)
-	GetFullLinkByShort(shortLink string) (fullUrl string, err error)
+	GetServiceLinkByURL(fullURL string) (serviceLink string, err error)
+	GetFullLinkByShort(shortLink string) (fullURL string, err error)
 	getHostShortLink() string
 	SetLength(length int)
 }
@@ -62,9 +62,9 @@ func (service ServiceShortLink) getHostShortLink() string {
 }
 
 // Получаем короткую ссылку с хостом по Url-адресу
-func (service *ServiceShortLink) GetServiceLinkByUrl(fullUrl string) (serviceLink string, err error) {
+func (service *ServiceShortLink) GetServiceLinkByURL(fullURL string) (serviceLink string, err error) {
 
-	shortLink, err := service.getShortLinkByUrl(fullUrl)
+	shortLink, err := service.getShortLinkByURL(fullURL)
 	if err == nil {
 		if shortLink != "" {
 			hostService := service.getHostShortLink()
@@ -77,9 +77,9 @@ func (service *ServiceShortLink) GetServiceLinkByUrl(fullUrl string) (serviceLin
 }
 
 // Генерируем короткую ссылку по Url-адресу
-func (service *ServiceShortLink) getShortLinkByUrl(fullUrl string) (shortLink string, err error) {
+func (service *ServiceShortLink) getShortLinkByURL(fullURL string) (shortLink string, err error) {
 
-	shortLink, err = service.storage.GetShortLinkByUrl(fullUrl)
+	shortLink, err = service.storage.GetShortLinkByURL(fullURL)
 	if err == nil {
 		if shortLink != "" {
 			return
@@ -91,7 +91,7 @@ func (service *ServiceShortLink) getShortLinkByUrl(fullUrl string) (shortLink st
 			logger.GetLogger().Printf("Сформировали новый код  %s", shortLink)
 
 			// добавим короткую ссылку в хранилище
-			err = service.storage.AddShortLinkForUrl(fullUrl, shortLink)
+			err = service.storage.AddShortLinkForURL(fullURL, shortLink)
 			logger.GetLogger().Printf("Содержание storage %+v", service.storage)
 		}
 	}
@@ -100,9 +100,9 @@ func (service *ServiceShortLink) getShortLinkByUrl(fullUrl string) (shortLink st
 }
 
 // Получаем Url-адрес по короткой ссылке
-func (service *ServiceShortLink) GetFullLinkByShort(shortLink string) (fullUrl string, err error) {
+func (service *ServiceShortLink) GetFullLinkByShort(shortLink string) (fullURL string, err error) {
 
-	fullUrl, err = service.storage.GetFullLinkByShort(shortLink)
+	fullURL, err = service.storage.GetFullLinkByShort(shortLink)
 	if err != nil {
 		// должны показать ошибку
 		err = getPackageError("Короткая ссылка " + shortLink + " не зарегистрирована")

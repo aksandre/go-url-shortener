@@ -67,7 +67,7 @@ var appConfig = &ConfigType{}
 var setupAppConfig = false
 
 func GetAppConfig() ConfigTypeInterface {
-	if setupAppConfig == false {
+	if !setupAppConfig {
 		// переменная конфига
 		appConfig.installConfig()
 		setupAppConfig = true

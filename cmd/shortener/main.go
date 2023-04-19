@@ -5,7 +5,7 @@ import (
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/handlers"
 	"go-url-shortener/internal/logger"
-	"go-url-shortener/internal/storage/storageShortlink"
+	"go-url-shortener/internal/storage/storageshortlink"
 	"net/http"
 )
 
@@ -16,7 +16,7 @@ func main() {
 	logger.GetLogger().Printf("Настройки конфигурации:  %+v", configApp)
 
 	// инициализируем хранилище ссылок
-	var storageShortLink = storageShortlink.NewStorageShorts()
+	var storageShortLink = storageshortlink.NewStorageShorts()
 	var serviceShortLink = service.NewServiceShortLink(storageShortLink, configApp)
 
 	// Адрес сервера из конфига

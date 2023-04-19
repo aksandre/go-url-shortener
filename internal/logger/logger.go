@@ -19,7 +19,7 @@ var appLogger TypeAppLogger
 var setupLogger = false
 
 func GetLogger() TypeAppLogger {
-	if setupLogger == false {
+	if !setupLogger {
 		initLogger()
 		setupLogger = true
 	}
@@ -68,8 +68,6 @@ func createFolder(folderPath string) error {
 			if err != nil {
 				panic(err)
 			}
-		} else {
-			// другая ошибка
 		}
 	}
 	return err
