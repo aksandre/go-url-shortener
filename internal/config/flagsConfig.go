@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 )
 
@@ -102,6 +103,7 @@ func (hsl *hostShortLink) Type() string {
 type FlagConfigType struct {
 	AddressServer *addressServer
 	HostShortLink *hostShortLink
+	LevelLogs     int
 }
 
 // Глобальные переменные окружения
@@ -116,6 +118,7 @@ var flagConfig = FlagConfigType{
 		host:     "localhost",
 		port:     8080,
 	},
+	LevelLogs: int(log.InfoLevel),
 }
 
 // Маркер синглтона, что сущность, уже инициировали
@@ -138,5 +141,6 @@ func SetFlagConfig(config FlagConfigType) {
 func initFlags() {
 	flag.Var(flagConfig.AddressServer, "a", "Адрес сервера")
 	flag.Var(flagConfig.HostShortLink, "b", "Базовый адрес для формирования короткой ссылки")
+	flag.IntVar(&flagConfig.LevelLogs, "logLevel", int(log.InfoLevel), "Уровень логирования")
 	flag.Parse()
 }

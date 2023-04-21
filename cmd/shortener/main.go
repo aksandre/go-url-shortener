@@ -13,7 +13,7 @@ func main() {
 
 	// Получаем конфиг
 	configApp := config.GetAppConfig()
-	logger.GetLogger().Printf("Настройки конфигурации:  %+v", configApp)
+	logger.GetLogger().Debugf("Настройки конфигурации:  %+v", configApp)
 
 	// инициализируем хранилище ссылок
 	var storageShortLink = storageshortlink.NewStorageShorts()
@@ -21,7 +21,7 @@ func main() {
 
 	// Адрес сервера из конфига
 	addrServer := configApp.GetAddrServer()
-	logger.GetLogger().Printf("Поднимаем сервер по адресу:  %s", addrServer)
+	logger.GetLogger().Debugf("Поднимаем сервер по адресу:  %s", addrServer)
 
 	handler := handlers.NewRouterHandler(serviceShortLink)
 	err := http.ListenAndServe(addrServer, handler)

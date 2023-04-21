@@ -11,6 +11,7 @@ type EnviromentConfigType struct {
 	AddressServer string `env:"SERVER_ADDRESS"`
 	HostShortLink string `env:"BASE_URL"`
 	LogsPath      string `env:"LOGS_PATH_GOLANG"`
+	LevelLogs     int    `env:"LEVEL_LOGS_GOLANG"`
 }
 
 // Глобальные переменные окружения
@@ -38,6 +39,10 @@ func initEnviroment() {
 
 	env.Parse(&enviromentConfig)
 
+	_, okLevelLogs := os.LookupEnv("LEVEL_LOGS_GOLANG")
+	if !okLevelLogs {
+		enviromentConfig.LevelLogs = -1
+	}
 	if enviromentConfig.LogsPath == "" {
 		valHome, okHome := os.LookupEnv("HOME")
 		valHomepath, okHomepath := os.LookupEnv("HOMEPATH")

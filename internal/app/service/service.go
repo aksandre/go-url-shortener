@@ -88,11 +88,11 @@ func (service *ServiceShortLink) getShortLinkByURL(fullURL string) (shortLink st
 			//такой url еще не приходил, генерируем новую ссылку
 			lengthShort := service.lengthShortLink
 			shortLink = service.getRandString(lengthShort)
-			logger.GetLogger().Printf("Сформировали новый код  %s", shortLink)
+			logger.GetLogger().Debugf("Сформировали новый код  %s", shortLink)
 
 			// добавим короткую ссылку в хранилище
 			err = service.storage.AddShortLinkForURL(fullURL, shortLink)
-			logger.GetLogger().Printf("Содержание storage %+v", service.storage)
+			logger.GetLogger().Debugf("Содержание storage %+v", service.storage)
 		}
 	}
 

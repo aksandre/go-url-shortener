@@ -3,8 +3,9 @@ package logger
 import (
 	"fmt"
 	"go-url-shortener/internal/config"
-	"log"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // тип нашего логера приложения
@@ -38,11 +39,17 @@ func initLogger() {
 	} else {
 		pathLogFile = logAppDir + "/appLog.log"
 	}
-
+	fmt.Println("ЛОГИ ТУТ: " + pathLogFile)
 	loggerBase := createBaseLogger(pathLogFile)
+
 	appLogger = TypeAppLogger{
 		loggerBase,
 	}
+
+	levelLogConfig := config.GetAppConfig().GetLevelLogs()
+	levelLog := log.Level(levelLogConfig)
+	fmt.Printf("Уровень логов: %d", levelLog)
+	SetLevelLog(levelLog)
 }
 
 // Получение пути до папки с логами
@@ -76,10 +83,24 @@ func createFolder(folderPath string) error {
 // Создание объекта Логера из стандартной библиотеки
 func createBaseLogger(pathToFileLog string) *log.Logger {
 
-	f, err := os.OpenFile(pathToFileLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(pathToFileLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
 	//defer f.Close()
-	return log.New(f, "Logger:", log.Ldate|log.Ltime)
+	//return log.New(f, "Logger:", log.Ldate|log.Ltime)
+	logger := log.New()
+
+	// устанавливаем вывод логов в файл
+	logger.SetOutput(file)
+
+	// устанавливаем вывод логов в формате JSON
+	logger.SetFormatter(&log.TextFormatter{})
+
+	return logger
+}
+
+// устанавливаем уровень логирования
+func SetLevelLog(level log.Level) {
+	appLogger.SetLevel(level)
 }

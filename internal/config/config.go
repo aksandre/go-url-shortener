@@ -1,5 +1,7 @@
 package config
 
+import "fmt"
+
 type ConfigTypeInterface interface {
 	GetAddrServer() string
 	GetHostShortLink() string
@@ -9,6 +11,8 @@ type ConfigTypeInterface interface {
 	// для логирования
 	GetLogsPath() string
 	SetLogsPath(string)
+	GetLevelLogs() int
+	SetLevelLogs(int)
 }
 
 // Тип для хранения конфигурации приложения
@@ -17,6 +21,7 @@ type ConfigType struct {
 	addrServer    string
 	hostShortLink string
 	logsPath      string
+	levelLogs     int
 }
 
 func (ct *ConfigType) GetAddrServer() string {
@@ -43,6 +48,14 @@ func (ct *ConfigType) GetLogsPath() string {
 	return ct.logsPath
 }
 
+func (ct *ConfigType) SetLevelLogs(value int) {
+	ct.levelLogs = value
+}
+
+func (ct *ConfigType) GetLevelLogs() int {
+	return ct.levelLogs
+}
+
 func (ct *ConfigType) installConfig() {
 
 	envVars := GetEnviromentConfig()
@@ -59,6 +72,14 @@ func (ct *ConfigType) installConfig() {
 	}
 
 	ct.logsPath = envVars.LogsPath
+
+	fmt.Printf("Уровень флаг логов: %d", flags.LevelLogs)
+	fmt.Printf("Уровень окружен логов: %d", envVars.LevelLogs)
+	ct.levelLogs = flags.LevelLogs
+	if envVars.LevelLogs != -1 {
+		ct.levelLogs = envVars.LevelLogs
+	}
+
 }
 
 var appConfig = &ConfigType{}

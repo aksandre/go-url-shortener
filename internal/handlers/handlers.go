@@ -33,7 +33,7 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 	if err != nil {
 		err = fmt.Errorf("ошибка получения из запроса URl адреса: %w", err)
 		strError := err.Error()
-		logger.GetLogger().Printf("%s", strError)
+		logger.GetLogger().Debugf("%s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -49,7 +49,7 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 
 		strError := "Ошибка создания короткой ссылки: "
 		strError += "В запросе не указан URL, для которого надо сгенерировать короткую ссылку"
-		logger.GetLogger().Printf("%s", strError)
+		logger.GetLogger().Debugf("%s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -57,15 +57,15 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 		return
 	}
 
-	logger.GetLogger().Printf("Для генерации короткой ссылки пришел Url: %s", urlFull)
+	logger.GetLogger().Debugf("Для генерации короткой ссылки пришел Url: %s", urlFull)
 
 	serviceLink, err := dh.service.GetServiceLinkByURL(urlFull)
-	logger.GetLogger().Printf("Сделали короткую ссылку: %s", serviceLink)
+	logger.GetLogger().Debugf("Сделали короткую ссылку: %s", serviceLink)
 
 	if err != nil {
 		err = fmt.Errorf("ошибка создания короткой ссылки : %w", err)
 		strError := err.Error()
-		logger.GetLogger().Printf("%s", strError)
+		logger.GetLogger().Debugf("%s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -105,14 +105,14 @@ func (dh dataHandler) getServiceLinkByURL(res http.ResponseWriter, req *http.Req
 
 	urlFull := string(result)
 	urlFull = strings.TrimSpace(urlFull)
-	logger.GetLogger().Printf("Для генерации короткой ссылки пришел Url: %s", urlFull)
+	logger.GetLogger().Debugf("Для генерации короткой ссылки пришел Url: %s", urlFull)
 
 	serviceLink, err := dh.service.GetServiceLinkByURL(urlFull)
-	logger.GetLogger().Printf("Сделали короткую ссылку: %s", serviceLink)
+	logger.GetLogger().Debugf("Сделали короткую ссылку: %s", serviceLink)
 
 	if err != nil {
 		strError := err.Error()
-		logger.GetLogger().Printf("Ошибка создания короткой ссылки : %s", strError)
+		logger.GetLogger().Debugf("Ошибка создания короткой ссылки : %s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -135,14 +135,14 @@ func (dh dataHandler) getServiceLinkByURL(res http.ResponseWriter, req *http.Req
 func (dh dataHandler) getFullLinkByShort(res http.ResponseWriter, req *http.Request) {
 	shortLink := chi.URLParam(req, "shortLink")
 	shortLink = strings.TrimSpace(shortLink)
-	logger.GetLogger().Printf("Пришла короткая ссылка: %s", shortLink)
+	logger.GetLogger().Debugf("Пришла короткая ссылка: %s", shortLink)
 
 	fullLink, err := dh.service.GetFullLinkByShort(shortLink)
-	logger.GetLogger().Printf("Получили полную ссылку: %s", fullLink)
+	logger.GetLogger().Debugf("Получили полную ссылку: %s", fullLink)
 
 	if err != nil {
 		strErr := err.Error()
-		logger.GetLogger().Printf("Ошибка получения полной ссылки: %s", strErr)
+		logger.GetLogger().Debugf("Ошибка получения полной ссылки: %s", strErr)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
