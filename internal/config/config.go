@@ -1,13 +1,15 @@
 package config
 
-import "fmt"
-
 type ConfigTypeInterface interface {
 	GetAddrServer() string
 	GetHostShortLink() string
 
 	SetAddrServer(string)
 	SetHostShortLink(string)
+
+	GetFileStoragePath() string
+	SetFileStoragePath(string)
+
 	// для логирования
 	GetLogsPath() string
 	SetLogsPath(string)
@@ -18,18 +20,20 @@ type ConfigTypeInterface interface {
 // Тип для хранения конфигурации приложения
 // Экспортируемая - для мокирования
 type ConfigType struct {
-	addrServer    string
-	hostShortLink string
-	logsPath      string
-	levelLogs     int
-}
+	addrServer      string
+	hostShortLink   string
+	fileStoragePath string
 
-func (ct *ConfigType) GetAddrServer() string {
-	return ct.addrServer
+	logsPath  string
+	levelLogs int
 }
 
 func (ct *ConfigType) SetAddrServer(value string) {
 	ct.addrServer = value
+}
+
+func (ct *ConfigType) GetAddrServer() string {
+	return ct.addrServer
 }
 
 func (ct *ConfigType) SetHostShortLink(value string) {
@@ -56,6 +60,14 @@ func (ct *ConfigType) GetLevelLogs() int {
 	return ct.levelLogs
 }
 
+func (ct *ConfigType) SetFileStoragePath(value string) {
+	ct.fileStoragePath = value
+}
+
+func (ct *ConfigType) GetFileStoragePath() string {
+	return ct.fileStoragePath
+}
+
 func (ct *ConfigType) installConfig() {
 
 	envVars := GetEnviromentConfig()
@@ -72,9 +84,8 @@ func (ct *ConfigType) installConfig() {
 	}
 
 	ct.logsPath = envVars.LogsPath
+	ct.fileStoragePath = envVars.FileStoragePath
 
-	fmt.Printf("Уровень флаг логов: %d", flags.LevelLogs)
-	fmt.Printf("Уровень окружен логов: %d", envVars.LevelLogs)
 	ct.levelLogs = flags.LevelLogs
 	if envVars.LevelLogs != -1 {
 		ct.levelLogs = envVars.LevelLogs

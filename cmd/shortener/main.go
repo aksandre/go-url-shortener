@@ -6,6 +6,7 @@ import (
 	"go-url-shortener/internal/handlers"
 	"go-url-shortener/internal/logger"
 	"go-url-shortener/internal/storage/storageshortlink"
+
 	"net/http"
 )
 
@@ -23,6 +24,7 @@ func main() {
 	addrServer := configApp.GetAddrServer()
 	logger.GetLogger().Debugf("Поднимаем сервер по адресу:  %s", addrServer)
 
+	// получаем обработчик запросов
 	handler := handlers.NewRouterHandler(serviceShortLink)
 	err := http.ListenAndServe(addrServer, handler)
 	if err != nil {
@@ -51,6 +53,12 @@ xhr.open("GET", '/MIy3I6N4', true);
 
 // SET SERVER_ADDRESS=localhost:8045
 // SET BASE_URL=https://localhost:8041/hhhh/
+// SET LEVEL_LOGS_GOLANG=6
+// SET FILE_STORAGE_PATH=C:\Users\LENOVO\testLog.log
+
+// статический анализатор
+// для винды выполянть в каждйо отдельной папке
+// go vet -vettool=C:\GoProjects\golang\project\go-url-shortener\statictest.exe
 
 // go build -o shortener.exe
 // go run cmd/shortener/main.go --a="localhost:8010" --b="https://serviceshort.ru:8020"
@@ -58,3 +66,5 @@ xhr.open("GET", '/MIy3I6N4', true);
 // shortenertest -test.v -test.run=^TestIteration1$ -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
 // shortenertest -test.v -test.run=^TestIteration4$ -source-path=. -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
 // shortenertest -test.v -test.run=^TestIteration5$ -binary-path=cmd/shortener/shortener -server-host=localhost -server-port=8050 -server-base-url="http://localhost:8050"
+
+// shortenertest -test.v -test.run=^TestIteration6$ -binary-path=cmd/shortener/shortener -server-port=8050 -file-storage-path="C:\Users\LENOVO\goLogs\urlShortener\appLog.log" -source-path=.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/logger"
+	middlewareLogging "go-url-shortener/internal/middlewares/middlewarelogging"
 	"net/http"
 	"strings"
 
@@ -175,5 +176,9 @@ func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handl
 	router.NotFound(funcNotFoundMethod)
 	router.MethodNotAllowed(funcNotFoundMethod)
 
-	return router
+	// применяем к обработчику запросов логирование
+	handlerRoute := http.Handler(router)
+	handlerRoute = middlewareLogging.WpapLogging(handlerRoute)
+
+	return handlerRoute
 }

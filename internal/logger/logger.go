@@ -1,9 +1,9 @@
 package logger
 
 import (
-	"fmt"
 	"go-url-shortener/internal/config"
 	"os"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -11,6 +11,15 @@ import (
 // тип нашего логера приложения
 type TypeAppLogger struct {
 	*log.Logger
+}
+
+// своя реализация полей и методов внешнего пакета logrus,
+// чтобы не разбрасывать по коду его вызовы
+type CustomFields log.Fields
+
+func (logger TypeAppLogger) WithFields(additinalFields CustomFields) *log.Entry {
+	logrusFields := log.Fields(additinalFields)
+	return logger.Logger.WithFields(logrusFields)
 }
 
 // переменная логера
@@ -29,27 +38,92 @@ func GetLogger() TypeAppLogger {
 
 // инициализация сущности
 func initLogger() {
-	mainFolderLog := config.GetAppConfig().GetLogsPath()
-	logAppDir, err := getFolderLogs(mainFolderLog)
 
-	// путь до файла с логом
-	pathLogFile := "/appLog.log"
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		pathLogFile = logAppDir + "/appLog.log"
-	}
-	fmt.Println("ЛОГИ ТУТ: " + pathLogFile)
+	// создаем файл логов
+	pathLogFile, errorCreateLogFile := createLogFile()
+	//fmt.Println("ЛОГИ ТУТ: " + pathLogFile)
+
 	loggerBase := createBaseLogger(pathLogFile)
-
 	appLogger = TypeAppLogger{
 		loggerBase,
 	}
 
 	levelLogConfig := config.GetAppConfig().GetLevelLogs()
-	levelLog := log.Level(levelLogConfig)
-	fmt.Printf("Уровень логов: %d", levelLog)
-	SetLevelLog(levelLog)
+	SetLevelLog(levelLogConfig)
+	appLogger.Debugf("уровень логирования: %d", levelLogConfig)
+
+	if errorCreateLogFile != nil {
+		appLogger.Errorln("произошла ошибка создания файла лога: " + errorCreateLogFile.Error())
+	}
+
+}
+
+// Создание файла лога
+func createLogFile() (pathLogFile string, errorCreateLogFile error) {
+
+	// по тз нужно, чтобы  путь до логов получался через FILE_STORAGE_PATH
+	pathLogFileConfig := config.GetAppConfig().GetFileStoragePath()
+	if pathLogFileConfig != "" {
+
+		nameFile := filepath.Base(pathLogFileConfig)
+		// путь с правильными разделителями операционной системы
+		pathToFile := filepath.Dir(pathLogFileConfig)
+
+		err := os.MkdirAll(pathToFile, 0755)
+
+		if err != nil && !os.IsExist(err) {
+			errorCreateLogFile = err
+		} else {
+			// записываем путь с разделителями как в операционной системе
+			separatorOS := string(filepath.Separator)
+			pathLogFile = pathToFile + separatorOS + nameFile
+		}
+
+	} else {
+		// раньше для пути сохранения логов была использована переменная LOGS_PATH_GOLANG
+		// оставляем для обратной совместимости
+
+		// получаем папку для логов
+		mainFolderLog := config.GetAppConfig().GetLogsPath()
+		logAppDir, err := getFolderLogs(mainFolderLog)
+		if err != nil {
+			errorCreateLogFile = err
+		} else {
+			pathLogFile = logAppDir + "/appLog.log"
+		}
+	}
+
+	if errorCreateLogFile != nil {
+		pathLogFile = "/go_app_crash_log.log"
+	}
+
+	return
+}
+
+// Создание объекта Логера из стандартной библиотеки
+func createBaseLogger(pathToFileLog string) *log.Logger {
+
+	file, err := os.OpenFile(pathToFileLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//defer file.Close()
+
+	logger := log.New()
+
+	// устанавливаем вывод логов в файл
+	logger.SetOutput(file)
+
+	// устанавливаем вывод логов в формате JSON
+	logger.SetFormatter(&log.TextFormatter{})
+
+	return logger
+}
+
+// Устанавливаем уровень логирования
+func SetLevelLog(level int) {
+	levelLog := log.Level(level)
+	appLogger.SetLevel(levelLog)
 }
 
 // Получение пути до папки с логами
@@ -65,7 +139,7 @@ func getFolderLogs(mainFolderLog string) (logAppDir string, err error) {
 	return
 }
 
-// Созадние папки по указанному пути
+// Создание папки по указанному пути
 func createFolder(folderPath string) error {
 	// создаем папку logs в корне проекта
 	_, err := os.Stat(folderPath)
@@ -78,29 +152,4 @@ func createFolder(folderPath string) error {
 		}
 	}
 	return err
-}
-
-// Создание объекта Логера из стандартной библиотеки
-func createBaseLogger(pathToFileLog string) *log.Logger {
-
-	file, err := os.OpenFile(pathToFileLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	//defer f.Close()
-	//return log.New(f, "Logger:", log.Ldate|log.Ltime)
-	logger := log.New()
-
-	// устанавливаем вывод логов в файл
-	logger.SetOutput(file)
-
-	// устанавливаем вывод логов в формате JSON
-	logger.SetFormatter(&log.TextFormatter{})
-
-	return logger
-}
-
-// устанавливаем уровень логирования
-func SetLevelLog(level log.Level) {
-	appLogger.SetLevel(level)
 }

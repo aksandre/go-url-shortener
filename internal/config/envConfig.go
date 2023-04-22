@@ -8,10 +8,12 @@ import (
 
 // Тип для хранения переменных окружения
 type EnviromentConfigType struct {
-	AddressServer string `env:"SERVER_ADDRESS"`
-	HostShortLink string `env:"BASE_URL"`
-	LogsPath      string `env:"LOGS_PATH_GOLANG"`
-	LevelLogs     int    `env:"LEVEL_LOGS_GOLANG"`
+	AddressServer   string `env:"SERVER_ADDRESS"`
+	HostShortLink   string `env:"BASE_URL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+
+	LogsPath  string `env:"LOGS_PATH_GOLANG"`
+	LevelLogs int    `env:"LEVEL_LOGS_GOLANG"`
 }
 
 // Глобальные переменные окружения
