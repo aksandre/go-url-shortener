@@ -41,7 +41,7 @@ func initLogger() {
 
 	// создаем файл логов
 	pathLogFile, errorCreateLogFile := createLogFile()
-	//fmt.Println("ЛОГИ ТУТ: " + pathLogFile)
+	// fmt.Println("ЛОГИ ТУТ: " + pathLogFile)
 
 	loggerBase := createBaseLogger(pathLogFile)
 	appLogger = TypeAppLogger{
@@ -50,10 +50,10 @@ func initLogger() {
 
 	levelLogConfig := config.GetAppConfig().GetLevelLogs()
 	SetLevelLog(levelLogConfig)
-	appLogger.Debugf("уровень логирования: %d", levelLogConfig)
+	appLogger.Debugf("Уровень логирования: %d", levelLogConfig)
 
 	if errorCreateLogFile != nil {
-		appLogger.Errorln("произошла ошибка создания файла лога: " + errorCreateLogFile.Error())
+		appLogger.Errorln("Произошла ошибка создания файла лога: " + errorCreateLogFile.Error())
 	}
 
 }
@@ -89,12 +89,17 @@ func createLogFile() (pathLogFile string, errorCreateLogFile error) {
 		if err != nil {
 			errorCreateLogFile = err
 		} else {
-			pathLogFile = logAppDir + "/appLog.log"
+			separatorOS := string(filepath.Separator)
+			pathLogFile = logAppDir + separatorOS + "appLog.log"
 		}
 	}
 
+	// если не смогли создать файл с логом,
+	// то пишем в домашнюю директорию в аварийный файл
 	if errorCreateLogFile != nil {
-		pathLogFile = "/go_app_crash_log.log"
+		separatorOS := string(filepath.Separator)
+		userHomePath := config.GetAppConfig().GetFileStoragePath()
+		pathLogFile = userHomePath + separatorOS + "go_app_crash_log.log"
 	}
 
 	return

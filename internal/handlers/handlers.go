@@ -19,20 +19,14 @@ type dataHandler struct {
 
 // Генерация короткой ссылки по Json запросу
 func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Request) {
-	// получаем тело из запроса и проводим его к строке
+	// получаем тело из запроса
 	dataBody := req.Body
-	lenBody := req.ContentLength
-
-	bytesRawBody := make([]byte, lenBody)
-	dataBody.Read(bytesRawBody)
-	dataBody.Close()
 
 	dataRequest := struct {
 		URL string `json:"url"`
 	}{}
-	err := json.Unmarshal(bytesRawBody, &dataRequest)
-	if err != nil {
-		err = fmt.Errorf("ошибка получения из запроса URl адреса: %w", err)
+	if err := json.NewDecoder(dataBody).Decode(&dataRequest); err != nil {
+		err = fmt.Errorf("ошибка сериализации тела запроса: %w", err)
 		strError := err.Error()
 		logger.GetLogger().Debugf("%s", strError)
 
@@ -81,8 +75,8 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 		}{
 			Result: serviceLink,
 		}
-		bytesResult, _ := json.Marshal(dataResponse)
 
+		bytesResult, _ := json.Marshal(dataResponse)
 		lenResult := len(string(bytesResult))
 		strLenResult := fmt.Sprintf("%d", lenResult)
 		res.Header().Set("Content-Length", strLenResult)

@@ -141,7 +141,6 @@ func TestNewRouterHandler(t *testing.T) {
 				body:        "{\"result\":\"http://localhost:8080/UUUUUU\"}",
 			},
 		},
-
 		{
 			name:             "check WRONG short link from JSON request",
 			serviceShortLink: serviceShortLink,

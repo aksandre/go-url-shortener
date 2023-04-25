@@ -15,6 +15,7 @@ type ConfigTypeInterface interface {
 	SetLogsPath(string)
 	GetLevelLogs() int
 	SetLevelLogs(int)
+	GetUserHomePath() string
 }
 
 // Тип для хранения конфигурации приложения
@@ -24,8 +25,9 @@ type ConfigType struct {
 	hostShortLink   string
 	fileStoragePath string
 
-	logsPath  string
-	levelLogs int
+	logsPath     string
+	levelLogs    int
+	userHomePath string
 }
 
 func (ct *ConfigType) SetAddrServer(value string) {
@@ -68,6 +70,10 @@ func (ct *ConfigType) GetFileStoragePath() string {
 	return ct.fileStoragePath
 }
 
+func (ct *ConfigType) GetUserHomePath() string {
+	return ct.userHomePath
+}
+
 func (ct *ConfigType) installConfig() {
 
 	envVars := GetEnviromentConfig()
@@ -84,13 +90,18 @@ func (ct *ConfigType) installConfig() {
 	}
 
 	ct.logsPath = envVars.LogsPath
-	ct.fileStoragePath = envVars.FileStoragePath
+
+	ct.fileStoragePath = flags.FileStoragePath
+	if envVars.FileStoragePath != "" {
+		ct.fileStoragePath = envVars.FileStoragePath
+	}
 
 	ct.levelLogs = flags.LevelLogs
 	if envVars.LevelLogs != -1 {
 		ct.levelLogs = envVars.LevelLogs
 	}
 
+	ct.userHomePath = envVars.UserHomePath
 }
 
 var appConfig = &ConfigType{}

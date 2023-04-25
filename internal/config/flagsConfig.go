@@ -2,12 +2,13 @@ package config
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	flag "github.com/spf13/pflag"
+	//flag "github.com/spf13/pflag"
 )
 
 // Адрес запуска HTTP-сервера
@@ -101,9 +102,10 @@ func (hsl *hostShortLink) Type() string {
 
 // Тип для хранения флагов запуска приложения
 type FlagConfigType struct {
-	AddressServer *addressServer
-	HostShortLink *hostShortLink
-	LevelLogs     int
+	AddressServer   *addressServer
+	HostShortLink   *hostShortLink
+	FileStoragePath string
+	LevelLogs       int
 }
 
 // Глобальные переменные окружения
@@ -118,7 +120,8 @@ var flagConfig = FlagConfigType{
 		host:     "localhost",
 		port:     8080,
 	},
-	LevelLogs: int(log.InfoLevel),
+	FileStoragePath: "",
+	LevelLogs:       int(log.InfoLevel),
 }
 
 // Маркер синглтона, что сущность, уже инициировали
@@ -141,6 +144,7 @@ func SetFlagConfig(config FlagConfigType) {
 func initFlags() {
 	flag.Var(flagConfig.AddressServer, "a", "Адрес сервера")
 	flag.Var(flagConfig.HostShortLink, "b", "Базовый адрес для формирования короткой ссылки")
+	flag.StringVar(&flagConfig.FileStoragePath, "f", "", "Путь до файла лога")
 	flag.IntVar(&flagConfig.LevelLogs, "logLevel", int(log.InfoLevel), "Уровень логирования")
 	flag.Parse()
 }
