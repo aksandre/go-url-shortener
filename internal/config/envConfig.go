@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"log"
 	"os"
 
 	env "github.com/caarlos0/env/v8"
@@ -40,7 +42,11 @@ func SetEnviromentConfig(config EnviromentConfigType) {
 // инициализация сущности
 func initEnviroment() {
 
-	env.Parse(&enviromentConfig)
+	err := env.Parse(&enviromentConfig)
+	if err != nil {
+		err = fmt.Errorf("ошибка: не смогли определить переменные окружения: %w", err)
+		log.Println(err.Error())
+	}
 
 	// если значение не установлено, то устанавливаем сами
 	_, okLevelLogs := os.LookupEnv("LEVEL_LOGS_GOLANG")

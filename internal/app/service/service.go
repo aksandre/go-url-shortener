@@ -56,7 +56,7 @@ func (service *ServiceShortLink) getRandString(length int) string {
 }
 
 // Получаем хост открытия коротких ссылок
-func (service ServiceShortLink) getHostShortLink() string {
+func (service *ServiceShortLink) getHostShortLink() string {
 	host := service.configApp.GetHostShortLink()
 	return host
 }

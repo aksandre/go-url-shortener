@@ -34,7 +34,7 @@ func (as *addressServer) Set(strValue string) (err error) {
 	patrsString := strings.Split(strValue, ":")
 
 	if len(patrsString) > 1 {
-		as.host = string(patrsString[0])
+		as.host = patrsString[0]
 		intPort, errParse := strconv.ParseInt(patrsString[1], 0, 0)
 		if errParse != nil {
 			err = fmt.Errorf("не удалось получить порт сервера (%s): %w", strValue, errParse)
@@ -76,7 +76,7 @@ func (hsl *hostShortLink) Set(strValue string) (err error) {
 
 	patrsString := strings.Split(strValue, "://")
 	if len(patrsString) > 1 {
-		hsl.protocol = string(patrsString[0])
+		hsl.protocol = patrsString[0]
 
 		patrs2String := strings.Split(patrsString[1], ":")
 		if len(patrs2String) > 1 {

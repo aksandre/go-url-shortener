@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/handlers"
 	"go-url-shortener/internal/logger"
 	"go-url-shortener/internal/storage/storageshortlink"
+	"log"
 
 	"net/http"
 )
@@ -28,7 +30,10 @@ func main() {
 	handler := handlers.NewRouterHandler(serviceShortLink)
 	err := http.ListenAndServe(addrServer, handler)
 	if err != nil {
-		panic(err)
+		err = fmt.Errorf("ошибка создания сервера: %w", err)
+		strError := err.Error()
+		logger.GetLogger().Fatalf("%s", strError)
+		log.Fatal(strError)
 	}
 }
 
@@ -62,10 +67,10 @@ xhr.open("GET", '/MIy3I6N4', true);
 
 // go build -o shortener.exe
 // go run cmd/shortener/main.go --a="localhost:8010" --b="https://serviceshort.ru:8020"
-// go run cmd/shortener/main.go --a="localhost:8080" --b="http://localhost:8080"
+// go run cmd/shortener/main.go --a="localhost:8080" --b="http://localhost:8080" --f="C:\Users\LENOVO\goLogs\testlogShortener.log"
 // shortenertest -test.v -test.run=^TestIteration1$ -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
 // shortenertest -test.v -test.run=^TestIteration4$ -source-path=. -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
 // shortenertest -test.v -test.run=^TestIteration5$ -binary-path=cmd/shortener/shortener -server-host=localhost -server-port=8050 -server-base-url="http://localhost:8050"
 
 // shortenertest -test.v -test.run=^TestIteration6$ -binary-path=cmd/shortener/shortener -server-port=8050 -file-storage-path="C:\Users\LENOVO\goLogs\urlShortener\appLog.log" -source-path=.
-// shortenertest -test.v -test.run=^TestIteration7$ -binary-path=cmd/shortener/shortener -server-port=8066 -file-storage-path="C:\Users\LENOVO\goLogs\urlShortener\11appLog.log" -source-path=.
+// shortenertest -test.v -test.run=^TestIteration7$ -binary-path=cmd/shortener/shortener -server-port=8066 -file-storage-path="C:\Users\LENOVO\goLogs\urlShortener\appLog.log" -source-path=.
