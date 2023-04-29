@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/logger"
+	"go-url-shortener/internal/models"
+
 	middlewareLogging "go-url-shortener/internal/middlewares/middlewarelogging"
 	"net/http"
 	"strings"
@@ -22,9 +24,8 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 	// получаем тело из запроса
 	dataBody := req.Body
 
-	dataRequest := struct {
-		URL string `json:"url"`
-	}{}
+	// данные запроса
+	dataRequest := models.RequestServiceLink{}
 	if err := json.NewDecoder(dataBody).Decode(&dataRequest); err != nil {
 		err = fmt.Errorf("ошибка сериализации тела запроса: %w", err)
 		strError := err.Error()
@@ -70,13 +71,11 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 	} else {
 
 		// данные ответа
-		dataResponse := struct {
-			Result string `json:"result"`
-		}{
+		dataResponse := models.ResponseServiceLink{
 			Result: serviceLink,
 		}
-
 		bytesResult, _ := json.Marshal(dataResponse)
+
 		lenResult := len(string(bytesResult))
 		strLenResult := fmt.Sprintf("%d", lenResult)
 		res.Header().Set("Content-Length", strLenResult)
