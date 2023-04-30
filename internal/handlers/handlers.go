@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/logger"
-	"go-url-shortener/internal/models"
+	models "go-url-shortener/internal/model_requests_responses"
 
 	middlewareLogging "go-url-shortener/internal/middlewares/middlewarelogging"
 	"net/http"
@@ -38,7 +38,7 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 	}
 
 	// получаем адрес для которого формируем короткую ссылку
-	urlFull := string(dataRequest.URL)
+	urlFull := string(dataRequest.Url)
 	urlFull = strings.TrimSpace(urlFull)
 
 	if len(urlFull) == 0 {
@@ -74,7 +74,7 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 		dataResponse := models.ResponseServiceLink{
 			Result: serviceLink,
 		}
-		bytesResult, _ := json.Marshal(dataResponse)
+		bytesResult, _ := json.Marshal(&dataResponse)
 
 		lenResult := len(string(bytesResult))
 		strLenResult := fmt.Sprintf("%d", lenResult)

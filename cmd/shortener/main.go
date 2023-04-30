@@ -65,9 +65,13 @@ xhr.open("GET", '/MIy3I6N4', true);
 // для винды выполянть в каждйо отдельной папке
 // go vet -vettool=C:\GoProjects\golang\project\go-url-shortener\statictest.exe
 
+// генерация модели
+// protoc --proto_path=proto --go_opt=paths=source_relative --go_out=. proto/requests_responses.proto
+
 // go build -o shortener.exe
 // go run cmd/shortener/main.go --a="localhost:8010" --b="https://serviceshort.ru:8020"
 // go run cmd/shortener/main.go --a="localhost:8080" --b="http://localhost:8080" --f="C:\Users\LENOVO\goLogs\testlogShortener.log"
+
 // shortenertest -test.v -test.run=^TestIteration1$ -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
 // shortenertest -test.v -test.run=^TestIteration4$ -source-path=. -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
 // shortenertest -test.v -test.run=^TestIteration5$ -binary-path=cmd/shortener/shortener -server-host=localhost -server-port=8050 -server-base-url="http://localhost:8050"
