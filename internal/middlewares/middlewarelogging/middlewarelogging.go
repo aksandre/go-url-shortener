@@ -3,6 +3,7 @@ package middlewarelogging
 import (
 	"go-url-shortener/internal/logger"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -33,8 +34,9 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode
 }
 
-func WpapLogging(handler http.Handler) http.Handler {
+func WrapLogging(handler http.Handler) http.Handler {
 	logFunc := func(respWriter http.ResponseWriter, request *http.Request) {
+
 		start := time.Now()
 
 		responseData := &responseData{
@@ -53,7 +55,15 @@ func WpapLogging(handler http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		obLogger := logger.GetLogger()
+		// сжатие запроса
+		contentEncodingRequest := request.Header.Get("Content-Encoding")
+		// тип контента из запроса
+		acceptEncodingRequest := request.Header.Values("Accept-Encoding")
+		strAcceptEncodingRequest := strings.Join(acceptEncodingRequest, "; ")
+
+		// тип контента из запроса
+		contentTypeRequest := request.Header.Get("Content-Type")
+
 		// определяем стандартные поля JSON
 		additinalFields := logger.CustomFields{
 			"uri":      request.RequestURI,
@@ -63,8 +73,13 @@ func WpapLogging(handler http.Handler) http.Handler {
 			"sizeResponse": responseData.size,
 			// получаем перехваченный код статуса ответа
 			"statusCodeResponse": responseData.status,
+
+			"acceptEncodingRequest":  strAcceptEncodingRequest,
+			"contentEncodingRequest": contentEncodingRequest,
+			"contentTypeRequest":     contentTypeRequest,
 		}
-		textLog := "!!! Зарегистрирован запрос"
+		textLog := "### Зарегистрирован запрос: "
+		obLogger := logger.GetLogger()
 		obLogger.WithFields(additinalFields).Info(textLog)
 	}
 	return http.HandlerFunc(logFunc)

@@ -6,7 +6,9 @@ import (
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/logger"
 	models "go-url-shortener/internal/model_requests_responses"
+	"io"
 
+	middlewareCompress "go-url-shortener/internal/middlewares/middleware_compress"
 	middlewareLogging "go-url-shortener/internal/middlewares/middlewarelogging"
 	"net/http"
 	"strings"
@@ -76,9 +78,6 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 		}
 		bytesResult, _ := json.Marshal(&dataResponse)
 
-		lenResult := len(string(bytesResult))
-		strLenResult := fmt.Sprintf("%d", lenResult)
-		res.Header().Set("Content-Length", strLenResult)
 		res.Header().Set("Content-Type", "application/json")
 		res.WriteHeader(http.StatusCreated)
 
@@ -91,11 +90,16 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 func (dh dataHandler) getServiceLinkByURL(res http.ResponseWriter, req *http.Request) {
 	// получаем тело из запроса и проводим его к строке
 	dataBody := req.Body
-	lenBody := req.ContentLength
-
-	result := make([]byte, lenBody)
-	dataBody.Read(result)
+	result, err := io.ReadAll(dataBody)
 	dataBody.Close()
+	if err != nil {
+		strError := err.Error()
+		logger.GetLogger().Debugf("Ошибка чтения тела запроса: %s", strError)
+
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(strError))
+	}
 
 	urlFull := string(result)
 	urlFull = strings.TrimSpace(urlFull)
@@ -171,7 +175,7 @@ func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handl
 
 	// применяем к обработчику запросов логирование
 	handlerRoute := http.Handler(router)
-	handlerRoute = middlewareLogging.WpapLogging(handlerRoute)
+	handlerRoute = middlewareLogging.WrapLogging(middlewareCompress.WrapCompression(handlerRoute))
 
 	return handlerRoute
 }

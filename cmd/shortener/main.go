@@ -58,8 +58,9 @@ xhr.open("GET", '/MIy3I6N4', true);
 
 // SET SERVER_ADDRESS=localhost:8045
 // SET BASE_URL=https://localhost:8041/hhhh/
-// SET LEVEL_LOGS_GOLANG=6
 // SET FILE_STORAGE_PATH=C:\Users\LENOVO\testLog.log
+
+// SET LEVEL_LOGS_GOLANG=6
 
 // статический анализатор
 // для винды выполянть в каждйо отдельной папке
@@ -69,6 +70,7 @@ xhr.open("GET", '/MIy3I6N4', true);
 // protoc --proto_path=proto --go_opt=paths=source_relative --go_out=. proto/requests_responses.proto
 
 // go build -o shortener.exe
+
 // go run cmd/shortener/main.go --a="localhost:8010" --b="https://serviceshort.ru:8020"
 // go run cmd/shortener/main.go --a="localhost:8080" --b="http://localhost:8080" --f="C:\Users\LENOVO\goLogs\testlogShortener.log"
 
@@ -78,3 +80,4 @@ xhr.open("GET", '/MIy3I6N4', true);
 
 // shortenertest -test.v -test.run=^TestIteration6$ -binary-path=cmd/shortener/shortener -server-port=8050 -file-storage-path="C:\Users\LENOVO\goLogs\urlShortener\appLog.log" -source-path=.
 // shortenertest -test.v -test.run=^TestIteration7$ -binary-path=cmd/shortener/shortener -server-port=8066 -file-storage-path="C:\Users\LENOVO\goLogs\urlShortener\appLog.log" -source-path=.
+// shortenertest -test.v -test.run=^TestIteration8$ -binary-path=cmd/shortener/shortener -source-path=.

@@ -158,6 +158,8 @@ func TestNewRouterHandler(t *testing.T) {
 
 			bodyReader := strings.NewReader(tt.body)
 			request := httptest.NewRequest(tt.method, tt.url, bodyReader)
+			//request.Header.Add("Accept-Encoding", "gzip")
+
 			respWriter := httptest.NewRecorder()
 
 			handler := NewRouterHandler(tt.serviceShortLink)

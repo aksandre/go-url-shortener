@@ -151,6 +151,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			req := resty.New().
 				SetRedirectPolicy(redirectPolicy).
 				R().
+				SetHeader("Accept-Encoding", "").
 				SetBody(tt.body)
 
 			req.Method = tt.method
@@ -175,7 +176,10 @@ func TestNewRouterHandlerServer(t *testing.T) {
 				resBody := res.Body()
 				res.RawBody().Close()
 				// получаем и проверяем тело запроса
-				assert.Equal(t, true, strings.Contains(string(resBody), tt.want.body))
+				if !assert.Equal(t, true, strings.Contains(string(resBody), tt.want.body)) {
+					logger.GetLogger().Debug("Пришло тело ответа:" + string(resBody) + ", ожидали: " + tt.want.body)
+				}
+
 			}
 		})
 	}
