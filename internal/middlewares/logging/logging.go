@@ -1,4 +1,4 @@
-package middlewarelogging
+package logging
 
 import (
 	"go-url-shortener/internal/logger"

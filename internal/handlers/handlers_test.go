@@ -21,8 +21,16 @@ func TestNewRouterHandler(t *testing.T) {
 	var storageShortLink = storageShort.NewStorageShorts()
 	storageShortLink.SetData(
 		storageShort.DataStorageShortLink{
-			"RRRTTTTT": "https://testSite.com",
-			"UUUUUU":   "https://dsdsdsdds.com",
+			"RRRTTTTT": storageShort.RowStorageShortLink{
+				ShortLink: "RRRTTTTT",
+				FullURL:   "https://testSite.com",
+				UUID:      "1",
+			},
+			"UUUUUU": storageShort.RowStorageShortLink{
+				ShortLink: "UUUUUU",
+				FullURL:   "https://dsdsdsdds.com",
+				UUID:      "2",
+			},
 		},
 	)
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
@@ -156,6 +164,8 @@ func TestNewRouterHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
+			logger.GetLogger().Debugf("### Начало теста: %s", tt.name)
+
 			bodyReader := strings.NewReader(tt.body)
 			request := httptest.NewRequest(tt.method, tt.url, bodyReader)
 			//request.Header.Add("Accept-Encoding", "gzip")
@@ -183,13 +193,17 @@ func TestNewRouterHandler(t *testing.T) {
 				// получаем и проверяем тело запроса
 				resBody, _ := io.ReadAll(res.Body)
 				res.Body.Close()
+				strBody := string(resBody)
+				logger.GetLogger().Debugf("Получили тело ответа %+v", strBody)
 				// получаем и проверяем тело запроса
-				assert.Equal(t, true, strings.Contains(string(resBody), tt.want.body))
+				assert.Equal(t, true, strings.Contains(strBody, tt.want.body))
 			}
 
 			/*if got := MainPageHandler(tt.args.serviceShortLink); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("MainPageHandler() = %v, want %v", got, tt.want)
 			}*/
+
+			logger.GetLogger().Debugf("### Конец теста: %s", tt.name)
 
 		})
 	}

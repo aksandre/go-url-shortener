@@ -144,7 +144,7 @@ func SetFlagConfig(config FlagConfigType) {
 func initFlags() {
 	flag.Var(flagConfig.AddressServer, "a", "Адрес сервера")
 	flag.Var(flagConfig.HostShortLink, "b", "Базовый адрес для формирования короткой ссылки")
-	flag.StringVar(&flagConfig.FileStoragePath, "f", "", "Путь до файла лога")
+	flag.StringVar(&flagConfig.FileStoragePath, "f", "/tmp/short-url-db.json", "Путь до файла хранилища")
 	flag.IntVar(&flagConfig.LevelLogs, "logLevel", int(log.InfoLevel), "Уровень логирования")
 	flag.Parse()
 }

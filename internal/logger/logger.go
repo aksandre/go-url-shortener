@@ -62,37 +62,14 @@ func initLogger() {
 // Создание файла лога
 func createLogFile() (pathLogFile string, errorCreateLogFile error) {
 
-	// по тз нужно, чтобы  путь до логов получался через FILE_STORAGE_PATH
-	pathLogFileConfig := config.GetAppConfig().GetFileStoragePath()
-	if pathLogFileConfig != "" {
-
-		nameFile := filepath.Base(pathLogFileConfig)
-		// путь с правильными разделителями операционной системы
-		pathToFile := filepath.Dir(pathLogFileConfig)
-
-		err := os.MkdirAll(pathToFile, 0755)
-
-		if err != nil && !os.IsExist(err) {
-			errorCreateLogFile = err
-		} else {
-			// записываем путь с разделителями как в операционной системе
-			separatorOS := string(filepath.Separator)
-			pathLogFile = pathToFile + separatorOS + nameFile
-		}
-
+	// получаем папку для логов
+	mainFolderLog := config.GetAppConfig().GetLogsPath()
+	logAppDir, err := getFolderLogs(mainFolderLog)
+	if err != nil {
+		errorCreateLogFile = err
 	} else {
-		// раньше для пути сохранения логов была использована переменная LOGS_PATH_GOLANG
-		// оставляем для обратной совместимости
-
-		// получаем папку для логов
-		mainFolderLog := config.GetAppConfig().GetLogsPath()
-		logAppDir, err := getFolderLogs(mainFolderLog)
-		if err != nil {
-			errorCreateLogFile = err
-		} else {
-			separatorOS := string(filepath.Separator)
-			pathLogFile = logAppDir + separatorOS + "appLog.log"
-		}
+		separatorOS := string(filepath.Separator)
+		pathLogFile = logAppDir + separatorOS + "appLog.log"
 	}
 
 	// если не смогли создать файл с логом,

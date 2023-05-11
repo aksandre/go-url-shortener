@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"testing"
 
@@ -22,8 +23,16 @@ func TestNewRouterHandlerServer(t *testing.T) {
 	var storageShortLink = storageShort.NewStorageShorts()
 	storageShortLink.SetData(
 		storageShort.DataStorageShortLink{
-			"RRRTTTTT": "https://testSite.com",
-			"UUUUUU":   "https://dsdsdsdds.com",
+			"RRRTTTTT": storageShort.RowStorageShortLink{
+				ShortLink: "RRRTTTTT",
+				FullURL:   "https://testSite.com",
+				UUID:      "1",
+			},
+			"UUUUUU": storageShort.RowStorageShortLink{
+				ShortLink: "UUUUUU",
+				FullURL:   "https://dsdsdsdds.com",
+				UUID:      "2",
+			},
 		},
 	)
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
@@ -139,21 +148,38 @@ func TestNewRouterHandlerServer(t *testing.T) {
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
+
+		{
+			name:             "get USER list short links from JSON request",
+			serviceShortLink: serviceShortLink,
+			method:           http.MethodGet,
+			url:              "/api/user/urls",
+			body:             "",
+			want: want{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        "\"original_url\":\"https://google.com/",
+			},
+		},
 	}
+
+	// создаем cookie jar для сохранения cookies между запросами
+	jar, _ := cookiejar.New(nil)
+	// не используем реальный редирект
+	redirectPolicy := resty.NoRedirectPolicy()
+	// Будем делать реальные запросы
+	req := resty.New().
+		SetRedirectPolicy(redirectPolicy).
+		SetCookieJar(jar).
+		R().
+		SetHeader("Accept-Encoding", "")
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			// не используем реальный редирект
-			redirectPolicy := resty.NoRedirectPolicy()
+			logger.GetLogger().Debugf("### Начало теста: %s", tt.name)
 
-			// Будем делать реальные запросы
-			req := resty.New().
-				SetRedirectPolicy(redirectPolicy).
-				R().
-				SetHeader("Accept-Encoding", "").
-				SetBody(tt.body)
-
+			req.SetBody(tt.body)
 			req.Method = tt.method
 			req.URL = serverTest.URL + tt.url
 			res, _ := req.Send()
@@ -181,6 +207,8 @@ func TestNewRouterHandlerServer(t *testing.T) {
 				}
 
 			}
+
+			logger.GetLogger().Debugf("### Конец теста: %s", tt.name)
 		})
 	}
 }

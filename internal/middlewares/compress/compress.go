@@ -1,4 +1,4 @@
-package middleware_compress
+package compress
 
 import (
 	"compress/gzip"
@@ -46,7 +46,9 @@ func (reader decompressReaderCloser) Read(p []byte) (n int, err error) {
 	if err != nil {
 		return 0, fmt.Errorf("ошибка распаковки входных данных: %w", err)
 	}
-	defer readerZip.Close()
+	defer func() {
+		readerZip.Close()
+	}()
 	return readerZip.Read(p)
 }
 
@@ -57,6 +59,7 @@ func (reader decompressReaderCloser) Close() (err error) {
 	return
 }
 
+// Нужно сжимать данные ответа ?
 func isNeedCompressBodyResponse(request *http.Request) bool {
 
 	isNeedCompress := false
@@ -103,7 +106,9 @@ func WrapCompression(handler http.Handler) http.Handler {
 
 			// создаём объект, который будет реализовывать сжатие
 			gz, err := gzip.NewWriterLevel(respWriter, gzip.BestSpeed)
-			defer gz.Close()
+			defer func() {
+				gz.Close()
+			}()
 			if err != nil {
 				logger.GetLogger().Error("Ошибка, не получилось сделать сжатие тела ответа: " + err.Error())
 			} else {

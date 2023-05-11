@@ -14,3 +14,9 @@ message RequestServiceLink {
 message ResponseServiceLink {
   string result = 1;
 }
+
+
+message ResponseListShortLinks {
+  string short_url = 1;
+  string original_url = 2;
+}

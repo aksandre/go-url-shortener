@@ -8,8 +8,10 @@ import (
 	models "go-url-shortener/internal/model_requests_responses"
 	"io"
 
-	middlewareCompress "go-url-shortener/internal/middlewares/middleware_compress"
-	middlewareLogging "go-url-shortener/internal/middlewares/middlewarelogging"
+	middlewareCompress "go-url-shortener/internal/middlewares/compress"
+	middlewareLogging "go-url-shortener/internal/middlewares/logging"
+	cookiesUserData "go-url-shortener/internal/userdata/usercookies"
+
 	"net/http"
 	"strings"
 
@@ -21,8 +23,48 @@ type dataHandler struct {
 	service service.ServiceShortInterface
 }
 
+// получаем список ссылок, которые генерировал пользователь
+func (dh dataHandler) getUserListShortLinksByJSON(res http.ResponseWriter, req *http.Request) {
+
+	listFullURL := []string{}
+	userData, err := cookiesUserData.GetCookiesUserData(req)
+	if err != nil {
+		logger.GetLogger().Error("Ошибка получения данных пользователя из cookies: " + err.Error())
+	} else {
+		listFullURL = userData.ListFullURL
+	}
+	listShortLinks, err := dh.service.GetDataShortLinks(listFullURL)
+	logger.GetLogger().Debugf("Список существующих коротких ссылок %+v", listShortLinks)
+
+	if err != nil {
+		err = fmt.Errorf("ошибка поулучения списка коротких ссылок: %w", err)
+		strError := err.Error()
+		logger.GetLogger().Debugf("%s", strError)
+
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(strError))
+		return
+
+	} else {
+
+		// данные ответа
+		bytesResult, _ := json.Marshal(&listShortLinks)
+		res.Header().Set("Content-Type", "application/json")
+
+		if len(listShortLinks) == 0 {
+			res.WriteHeader(http.StatusNoContent)
+		} else {
+			res.WriteHeader(http.StatusOK)
+		}
+
+		res.Write(bytesResult)
+	}
+}
+
 // Генерация короткой ссылки по Json запросу
 func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Request) {
+
 	// получаем тело из запроса
 	dataBody := req.Body
 
@@ -72,6 +114,9 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 
 	} else {
 
+		// добавляем ссылку в данные пользователя
+		cookiesUserData.AddFullURLToUser(urlFull, res, req)
+
 		// данные ответа
 		dataResponse := models.ResponseServiceLink{
 			Result: serviceLink,
@@ -117,6 +162,10 @@ func (dh dataHandler) getServiceLinkByURL(res http.ResponseWriter, req *http.Req
 		res.Write([]byte(strError))
 
 	} else {
+
+		// добавляем ссылку в данные пользователя
+		cookiesUserData.AddFullURLToUser(urlFull, res, req)
+
 		lenResult := len(serviceLink)
 		strLenResult := fmt.Sprintf("%d", lenResult)
 		res.Header().Set("Content-Length", strLenResult)
@@ -161,8 +210,9 @@ func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handl
 
 	router := chi.NewRouter()
 	router.Post("/", dataHandler.getServiceLinkByURL)
-	router.Post("/api/shorten", dataHandler.getServiceLinkByJSON)
 	router.Get("/{shortLink}", dataHandler.getFullLinkByShort)
+	router.Get("/api/user/urls", dataHandler.getUserListShortLinksByJSON)
+	router.Post("/api/shorten", dataHandler.getServiceLinkByJSON)
 
 	// когда метод не найден, то 400
 	funcNotFoundMethod := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {

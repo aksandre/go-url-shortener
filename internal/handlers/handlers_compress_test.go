@@ -38,8 +38,16 @@ func TestNewRouterCompressHandler(t *testing.T) {
 	var storageShortLink = storageShort.NewStorageShorts()
 	storageShortLink.SetData(
 		storageShort.DataStorageShortLink{
-			"RRRTTTTT": "https://testSite.com",
-			"UUUUUU":   "https://dsdsdsdds.com",
+			"RRRTTTTT": storageShort.RowStorageShortLink{
+				ShortLink: "RRRTTTTT",
+				FullURL:   "https://testSite.com",
+				UUID:      "1",
+			},
+			"UUUUUU": storageShort.RowStorageShortLink{
+				ShortLink: "UUUUUU",
+				FullURL:   "https://dsdsdsdds.com",
+				UUID:      "2",
+			},
 		},
 	)
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
@@ -53,7 +61,7 @@ func TestNewRouterCompressHandler(t *testing.T) {
 		contentType     string
 		location        string
 		body            string
-		decompress_body string
+		decompressBody  string
 		headersResponse http.Header
 	}
 
@@ -111,9 +119,9 @@ func TestNewRouterCompressHandler(t *testing.T) {
 			url:  "/",
 			body: "https://dsdsdsdds.com",
 			want: want{
-				statusCode:      201,
-				contentType:     "text/plain; charset=utf-8",
-				decompress_body: "/UUUUUU",
+				statusCode:     201,
+				contentType:    "text/plain; charset=utf-8",
+				decompressBody: "/UUUUUU",
 				headersResponse: http.Header{
 					"Content-Encoding": []string{"gzip"},
 				},
@@ -132,9 +140,9 @@ func TestNewRouterCompressHandler(t *testing.T) {
 			url:  "/api/shorten",
 			body: "{\"url\":\"https://dsdsdsdds.com\"}",
 			want: want{
-				statusCode:      http.StatusCreated,
-				contentType:     "application/json",
-				decompress_body: "{\"result\":\"http://localhost:8080/UUUUUU\"}",
+				statusCode:     http.StatusCreated,
+				contentType:    "application/json",
+				decompressBody: "{\"result\":\"http://localhost:8080/UUUUUU\"}",
 				headersResponse: http.Header{
 					"Content-Encoding": []string{"gzip"},
 				},
@@ -143,6 +151,8 @@ func TestNewRouterCompressHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
+			logger.GetLogger().Debugf("### Начало теста: %s", tt.name)
 
 			bodyReader := io.Reader(strings.NewReader(tt.body))
 
@@ -188,7 +198,7 @@ func TestNewRouterCompressHandler(t *testing.T) {
 				// получаем и проверяем тело запроса
 				assert.Equal(t, true, strings.Contains(string(resBody), tt.want.body))
 
-			} else if tt.want.decompress_body != "" {
+			} else if tt.want.decompressBody != "" {
 
 				acceptEncodingRequest := request.Header.Get("Accept-Encoding")
 				contentEncodingResponse := res.Header.Get("Content-Encoding")
@@ -199,7 +209,9 @@ func TestNewRouterCompressHandler(t *testing.T) {
 					if isTrueAssert2 {
 						// переменная readerZip будет читать входящие данные и распаковывать их
 						readerZip, err := gzip.NewReader(res.Body)
-						defer readerZip.Close()
+						defer func() {
+							readerZip.Close()
+						}()
 
 						if assert.NoError(t, err) {
 
@@ -207,7 +219,7 @@ func TestNewRouterCompressHandler(t *testing.T) {
 							stringBody := string(bytesBody)
 
 							// получаем и проверяем тело запроса
-							assert.Equal(t, true, strings.Contains(stringBody, tt.want.decompress_body))
+							assert.Equal(t, true, strings.Contains(stringBody, tt.want.decompressBody))
 
 						}
 					}
@@ -215,6 +227,8 @@ func TestNewRouterCompressHandler(t *testing.T) {
 				}
 
 			}
+
+			logger.GetLogger().Debugf("### Конец теста: %s", tt.name)
 
 		})
 	}

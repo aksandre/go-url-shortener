@@ -3,6 +3,7 @@ package service
 import (
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
+	models "go-url-shortener/internal/model_requests_responses"
 	storageShort "go-url-shortener/internal/storage/storageshortlink"
 
 	"errors"
@@ -24,9 +25,13 @@ func NewServiceShortLink(storage storageShort.StorageShortInterface, configApp c
 	}
 }
 
+type RowShortLink models.ResponseListShortLinks
+type ListShortLinks []RowShortLink
+
 type ServiceShortInterface interface {
 	GetServiceLinkByURL(fullURL string) (serviceLink string, err error)
 	GetFullLinkByShort(shortLink string) (fullURL string, err error)
+	GetDataShortLinks(listFullURL any) (shortLinks ListShortLinks, err error)
 	getHostShortLink() string
 	SetLength(length int)
 }
@@ -61,15 +66,63 @@ func (service *ServiceShortLink) getHostShortLink() string {
 	return host
 }
 
+// Получаем слайс данных коротких ссылок из хранилища
+// listFullURL - это слайс полных ссылок, для которых мы получаем списко коротких ссылок
+func (service *ServiceShortLink) GetDataShortLinks(listFullURL any) (shortLinks ListShortLinks, err error) {
+
+	isFilterFullURL := false
+	sliceListFullURL, ok := listFullURL.([]string)
+	if ok {
+		isFilterFullURL = true
+	}
+
+	listAllLinks, err := service.storage.GetShortLinks()
+	if err != nil {
+		return
+	}
+
+	for _, rowData := range listAllLinks {
+
+		isOkRow := true
+		if isFilterFullURL {
+			isOkRow = false
+			if len(sliceListFullURL) > 0 {
+				for _, fullURL := range sliceListFullURL {
+					if fullURL == rowData.FullURL {
+						isOkRow = true
+					}
+				}
+			}
+		}
+
+		if isOkRow {
+			shortLink := rowData.ShortLink
+			shortLink, _ = service.getShortLinkWithHost(shortLink)
+
+			shortLinks = append(shortLinks, RowShortLink{
+				ShortUrl:    shortLink,
+				OriginalUrl: rowData.FullURL,
+			})
+		}
+	}
+
+	return
+}
+
+// Формируем короткую ссылку с хостом по Url-адресу
+func (service *ServiceShortLink) getShortLinkWithHost(shortLink string) (shortLinkWithHost string, err error) {
+	hostService := service.getHostShortLink()
+	shortLinkWithHost = hostService + "/" + shortLink
+	return
+}
+
 // Получаем короткую ссылку с хостом по Url-адресу
 func (service *ServiceShortLink) GetServiceLinkByURL(fullURL string) (serviceLink string, err error) {
 
 	shortLink, err := service.getShortLinkByURL(fullURL)
 	if err == nil {
 		if shortLink != "" {
-			hostService := service.getHostShortLink()
-			serviceLink = hostService + "/" + shortLink
-			return
+			serviceLink, _ = service.getShortLinkWithHost(shortLink)
 		}
 	}
 
