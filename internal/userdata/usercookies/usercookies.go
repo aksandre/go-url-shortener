@@ -19,13 +19,18 @@ type UserDataCookies struct {
 // Получаем из кук данне пользователя
 func GetCookiesUserData(req *http.Request) (userData UserDataCookies, err error) {
 
-	cookiesLinksUsers := ""
 	if valueCookie, err := req.Cookie(NameCookiesUserData); err == nil {
-		cookiesLinksUsers = valueCookie.Value
-	}
 
-	if cookiesLinksUsers != "" {
+		cookiesLinksUsers := valueCookie.Value
+
 		bytesCookiesLinksUsers, err := base64.StdEncoding.DecodeString(cookiesLinksUsers)
+		if err != nil {
+			err = fmt.Errorf("ошибка: не получилось декодировать куки пользователя: %w", err)
+			strError := err.Error()
+			logger.GetLogger().Debug(strError)
+			return userData, err
+		}
+
 		err = json.Unmarshal(bytesCookiesLinksUsers, &userData)
 		if err != nil {
 			err = fmt.Errorf("ошибка десериализации куков "+NameCookiesUserData+": %w", err)
