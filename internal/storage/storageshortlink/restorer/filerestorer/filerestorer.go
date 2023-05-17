@@ -45,7 +45,10 @@ func (fileRestorer *FileRestorer) openFile() (file *os.File, err error) {
 func (fileRestorer *FileRestorer) WriteRow(dataRow restorer.RowDataRestorer) (err error) {
 
 	file, err := fileRestorer.openFile()
-	defer file.Close()
+	defer func() {
+		err = file.Close()
+	}()
+
 	if err != nil {
 		return
 	}
@@ -95,7 +98,9 @@ func (fileRestorer *FileRestorer) readerReadRow(reader *bufio.Scanner) (dataRow 
 func (fileRestorer *FileRestorer) ReadRow() (dataRow restorer.RowDataRestorer, isLastRow bool, err error) {
 
 	file, err := fileRestorer.openFile()
-	defer file.Close()
+	defer func() {
+		err = file.Close()
+	}()
 	if err != nil {
 		return
 	}
@@ -109,7 +114,10 @@ func (fileRestorer *FileRestorer) ReadRow() (dataRow restorer.RowDataRestorer, i
 func (fileRestorer *FileRestorer) ReadAll() (allRows []restorer.RowDataRestorer, err error) {
 
 	file, err := fileRestorer.openFile()
-	defer file.Close()
+	defer func() {
+		err = file.Close()
+	}()
+
 	if err != nil {
 		return
 	}
