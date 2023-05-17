@@ -6,7 +6,7 @@
 
 // имя proto-пакета и версия
 
-package model_requests_responses
+package model_protobuf_requests_responses
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
