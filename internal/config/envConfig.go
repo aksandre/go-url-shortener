@@ -13,6 +13,7 @@ type EnviromentConfigType struct {
 	AddressServer   string `env:"SERVER_ADDRESS"`
 	HostShortLink   string `env:"BASE_URL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DatabaseDsn     string `env:"DATABASE_DSN"`
 
 	LogsPath     string `env:"LOGS_PATH_GOLANG"`
 	LevelLogs    int    `env:"LEVEL_LOGS_GOLANG"`

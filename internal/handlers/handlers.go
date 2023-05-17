@@ -12,6 +12,8 @@ import (
 	middlewareLogging "go-url-shortener/internal/middlewares/logging"
 	cookiesUserData "go-url-shortener/internal/userdata/usercookies"
 
+	connDB "go-url-shortener/internal/database/connect"
+
 	"net/http"
 	"strings"
 
@@ -200,6 +202,24 @@ func (dh dataHandler) getFullLinkByShort(res http.ResponseWriter, req *http.Requ
 	}
 }
 
+// Получение Url-адреса по короткой ссылке
+func (dh dataHandler) getStatusPingDB(res http.ResponseWriter, req *http.Request) {
+
+	connect := connDB.GetConnect()
+	err := connect.Ping()
+	if err != nil {
+		err = fmt.Errorf("ошибка: пинг БД завершился ошибкой: %w", err)
+		strError := err.Error()
+		logger.GetLogger().Debugf("%s", strError)
+
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write([]byte(strError))
+	} else {
+		res.WriteHeader(http.StatusOK)
+	}
+}
+
 // создание обработчика запросов
 func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handler {
 
@@ -213,6 +233,7 @@ func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handl
 	router.Get("/{shortLink}", dataHandler.getFullLinkByShort)
 	router.Get("/api/user/urls", dataHandler.getUserListShortLinksByJSON)
 	router.Post("/api/shorten", dataHandler.getServiceLinkByJSON)
+	router.Get("/ping", dataHandler.getStatusPingDB)
 
 	// когда метод не найден, то 400
 	funcNotFoundMethod := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {

@@ -28,6 +28,7 @@ func main() {
 
 	// получаем обработчик запросов
 	handler := handlers.NewRouterHandler(serviceShortLink)
+	logger.GetLogger().Debugf("%s", "Запускаем сервер")
 	err := http.ListenAndServe(addrServer, handler)
 	if err != nil {
 		err = fmt.Errorf("ошибка создания сервера: %w", err)
@@ -59,6 +60,8 @@ xhr.open("GET", '/MIy3I6N4', true);
 // SET SERVER_ADDRESS=localhost:8045
 // SET BASE_URL=https://localhost:8041/hhhh/
 // SET FILE_STORAGE_PATH=C:\Users\LENOVO\testLog.log
+
+// SET DATABASE_DSN=postgres://postgres:123456789@localhost:5432/test_psg
 
 // SET LEVEL_LOGS_GOLANG=6
 

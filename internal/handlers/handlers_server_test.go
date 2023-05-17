@@ -161,6 +161,17 @@ func TestNewRouterHandlerServer(t *testing.T) {
 				body:        "\"original_url\":\"https://google.com/",
 			},
 		},
+		/*
+			{
+				name:             "check DB",
+				serviceShortLink: serviceShortLink,
+				method:           http.MethodGet,
+				url:              "/ping",
+				body:             "",
+				want: want{
+					statusCode: http.StatusOK,
+				},
+			},*/
 	}
 
 	// создаем cookie jar для сохранения cookies между запросами

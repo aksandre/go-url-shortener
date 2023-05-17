@@ -105,6 +105,7 @@ type FlagConfigType struct {
 	AddressServer   *addressServer
 	HostShortLink   *hostShortLink
 	FileStoragePath string
+	DatabaseDsn     string
 	LevelLogs       int
 }
 
@@ -146,5 +147,7 @@ func initFlags() {
 	flag.Var(flagConfig.HostShortLink, "b", "Базовый адрес для формирования короткой ссылки")
 	flag.StringVar(&flagConfig.FileStoragePath, "f", "/tmp/short-url-db.json", "Путь до файла хранилища")
 	flag.IntVar(&flagConfig.LevelLogs, "logLevel", int(log.InfoLevel), "Уровень логирования")
+	flag.StringVar(&flagConfig.DatabaseDsn, "d", "", "Название источника данных подключения к БД")
+
 	flag.Parse()
 }

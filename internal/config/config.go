@@ -10,6 +10,9 @@ type ConfigTypeInterface interface {
 	GetFileStoragePath() string
 	SetFileStoragePath(string)
 
+	GetDatabaseDsn() string
+	SetDatabaseDsn(string)
+
 	// для логирования
 	GetLogsPath() string
 	SetLogsPath(string)
@@ -24,6 +27,7 @@ type ConfigType struct {
 	addrServer      string
 	hostShortLink   string
 	fileStoragePath string
+	databaseDsn     string
 
 	logsPath     string
 	levelLogs    int
@@ -74,6 +78,14 @@ func (ct *ConfigType) GetUserHomePath() string {
 	return ct.userHomePath
 }
 
+func (ct *ConfigType) SetDatabaseDsn(value string) {
+	ct.databaseDsn = value
+}
+
+func (ct *ConfigType) GetDatabaseDsn() string {
+	return ct.databaseDsn
+}
+
 func (ct *ConfigType) installConfig() {
 
 	envVars := GetEnviromentConfig()
@@ -94,6 +106,11 @@ func (ct *ConfigType) installConfig() {
 	ct.fileStoragePath = flags.FileStoragePath
 	if envVars.FileStoragePath != "" {
 		ct.fileStoragePath = envVars.FileStoragePath
+	}
+
+	ct.databaseDsn = flags.DatabaseDsn
+	if envVars.DatabaseDsn != "" {
+		ct.databaseDsn = envVars.DatabaseDsn
 	}
 
 	ct.levelLogs = flags.LevelLogs
