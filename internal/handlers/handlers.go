@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/logger"
-	models "go-url-shortener/internal/model_requests_responses"
+	modelsRequests "go-url-shortener/internal/models/requests"
+	modelsResponses "go-url-shortener/internal/models/responses"
 	"io"
 
 	middlewareCompress "go-url-shortener/internal/middlewares/compress"
@@ -71,7 +72,7 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 	dataBody := req.Body
 
 	// данные запроса
-	dataRequest := models.RequestServiceLink{}
+	dataRequest := modelsRequests.RequestServiceLink{}
 	if err := json.NewDecoder(dataBody).Decode(&dataRequest); err != nil {
 		err = fmt.Errorf("ошибка сериализации тела запроса: %w", err)
 		strError := err.Error()
@@ -84,7 +85,7 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 	}
 
 	// получаем адрес для которого формируем короткую ссылку
-	urlFull := string(dataRequest.Url)
+	urlFull := string(dataRequest.URL)
 	urlFull = strings.TrimSpace(urlFull)
 
 	if len(urlFull) == 0 {
@@ -120,7 +121,7 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 		cookiesUserData.AddFullURLToUser(urlFull, res, req)
 
 		// данные ответа
-		dataResponse := models.ResponseServiceLink{
+		dataResponse := modelsResponses.ResponseServiceLink{
 			Result: serviceLink,
 		}
 		bytesResult, _ := json.Marshal(&dataResponse)

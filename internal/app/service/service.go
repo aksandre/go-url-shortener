@@ -3,7 +3,7 @@ package service
 import (
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
-	models "go-url-shortener/internal/model_requests_responses"
+	modelsResponses "go-url-shortener/internal/models/responses"
 	storageShort "go-url-shortener/internal/storage/storageshortlink"
 
 	"errors"
@@ -25,7 +25,7 @@ func NewServiceShortLink(storage storageShort.StorageShortInterface, configApp c
 	}
 }
 
-type RowShortLink models.ResponseListShortLinks
+type RowShortLink modelsResponses.ResponseListShortLinks
 type ListShortLinks []RowShortLink
 
 type ServiceShortInterface interface {
@@ -100,8 +100,8 @@ func (service *ServiceShortLink) GetDataShortLinks(listFullURL any) (shortLinks 
 			shortLink, _ = service.getShortLinkWithHost(shortLink)
 
 			shortLinks = append(shortLinks, RowShortLink{
-				ShortUrl:    shortLink,
-				OriginalUrl: rowData.FullURL,
+				ShortURL:    shortLink,
+				OriginalURL: rowData.FullURL,
 			})
 		}
 	}
