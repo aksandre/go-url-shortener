@@ -85,3 +85,5 @@ xhr.open("GET", '/MIy3I6N4', true);
 // shortenertest -test.v -test.run=^TestIteration7$ -binary-path=cmd/shortener/shortener -server-port=8066 -file-storage-path=C:\Users\LENOVO\goLogs\urlShortener\storageLink.json -source-path=.
 // shortenertest -test.v -test.run=^TestIteration8$ -binary-path=cmd/shortener/shortener -source-path=.
 // shortenertest -test.v -test.run=^TestIteration9$ -source-path=. -binary-path=cmd/shortener/shortener
+
+// shortenertest -test.v -test.run=^TestIteration10$ -source-path=. -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@postgres:5432/praktikum?sslmode=disable
