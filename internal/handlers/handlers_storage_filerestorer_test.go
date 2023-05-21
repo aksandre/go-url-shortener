@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
@@ -19,13 +18,26 @@ import (
 )
 
 // Это тесты с реальной отправкой данных на сервер
-func TestRestorerStorageHandlerServer(t *testing.T) {
+func TestFileRestorerStorageHandlerServer(t *testing.T) {
 
-	// создаем пустое хранилище
+	// имя временного файла с хранилищем
 	pathTempFile := os.TempDir() + "/storage/tempStorage.txt"
 	logger.GetLogger().Debugf("Путь до файла хранилища ссылок: %+v", pathTempFile)
 
-	storageShortLink := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
+	nameMyTest := "Check create File storage"
+	t.Run(nameMyTest, func(t *testing.T) {
+		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest)
+		_, err := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
+		assert.NoError(t, err)
+		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest)
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+
+	// создаем пустое хранилище
+	storageShortLink, _ := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
+	fileRestorer, _ := storageShortLink.GetRestorer()
 
 	testFullURL1 := "https://dsdsdsdds.com"
 	testShortLink1 := "UUUUUUUU"
@@ -38,33 +50,25 @@ func TestRestorerStorageHandlerServer(t *testing.T) {
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
 	defer func() {
-		file, err := os.OpenFile(pathTempFile, os.O_RDWR, 0755)
+		err := fileRestorer.ClearRows()
 		if err != nil {
-			log.Fatal(err)
-		} else {
-			err := file.Truncate(0)
-			if err != nil {
-				fmt.Println(err)
-			}
-			file.Close()
-
-			// err := os.Remove(pathTempFile)
-			// fmt.Println(err)
+			logger.GetLogger().Debug("не смогли очистить данные хранилища: " + err.Error())
 		}
 	}()
 
-	nameMyTest := "Check count link after restore"
+	nameMyTest2 := "Check count link after restore"
 	t.Run(nameMyTest, func(t *testing.T) {
 
-		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest)
+		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest2)
 
 		// новое хранилище, при инициализации должно заполниться
-		storageShortLink := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
+		storageShortLink, _ := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
 		// вверху добавили две ссылки, проверяем, что в хранилище две ссылки
 		countLinks, _ := storageShortLink.GetCountLink()
 		assert.Equal(t, countLinks, 2)
 
 		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest)
+
 	})
 
 	type want struct {
@@ -114,7 +118,7 @@ func TestRestorerStorageHandlerServer(t *testing.T) {
 			configApp := config.GetAppConfig()
 
 			// новое хранилище, при инициализации должно заполниться
-			storageShortLink := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
+			storageShortLink, _ := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
 			logger.GetLogger().Debugf("Восстановленные данные хранилища ссылок: %+v", storageShortLink)
 
 			serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)

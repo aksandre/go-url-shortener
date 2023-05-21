@@ -102,11 +102,12 @@ func (hsl *hostShortLink) Type() string {
 
 // Тип для хранения флагов запуска приложения
 type FlagConfigType struct {
-	AddressServer   *addressServer
-	HostShortLink   *hostShortLink
-	FileStoragePath string
-	DatabaseDsn     string
-	LevelLogs       int
+	AddressServer     *addressServer
+	HostShortLink     *hostShortLink
+	FileStoragePath   string
+	DatabaseDsn       string
+	LevelLogs         int
+	NameTableRestorer string
 }
 
 // Глобальные переменные окружения
@@ -146,6 +147,7 @@ func initFlags() {
 	flag.Var(flagConfig.AddressServer, "a", "Адрес сервера")
 	flag.Var(flagConfig.HostShortLink, "b", "Базовый адрес для формирования короткой ссылки")
 	flag.StringVar(&flagConfig.FileStoragePath, "f", "/tmp/short-url-db.json", "Путь до файла хранилища")
+	flag.StringVar(&flagConfig.NameTableRestorer, "tr", "shortlinks", "Название таблицы в базе данных для хранения коротких ссылок")
 	flag.IntVar(&flagConfig.LevelLogs, "logLevel", int(log.InfoLevel), "Уровень логирования")
 	flag.StringVar(&flagConfig.DatabaseDsn, "d", "", "Название источника данных подключения к БД")
 

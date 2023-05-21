@@ -8,6 +8,7 @@ type RowDataRestorer struct {
 
 type Restorer interface {
 	WriteRow(dataRow RowDataRestorer) (err error)
-	ReadRow() (dataRow RowDataRestorer, isLastRow bool, err error)
+	ReadRow() (dataRow RowDataRestorer, err error)
 	ReadAll() (allRows []RowDataRestorer, err error)
+	ClearRows() (err error)
 }

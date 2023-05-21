@@ -3,6 +3,7 @@ package handlers
 import (
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
+	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
 	storageShort "go-url-shortener/internal/storage/storageshortlink"
 	"strings"
@@ -18,6 +19,11 @@ import (
 
 // Это тесты с реальной отправкой данных на сервер
 func TestNewRouterHandlerServer(t *testing.T) {
+
+	defer func() {
+		dbHandler := dbconn.GetDBHandler()
+		dbHandler.Close()
+	}()
 
 	// заполняем хранилище
 	var storageShortLink = storageShort.NewStorageShorts()

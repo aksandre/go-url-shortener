@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
+	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
 	storageShort "go-url-shortener/internal/storage/storageshortlink"
 	"io"
@@ -34,6 +35,11 @@ func compressText(text string) []byte {
 // Это тесты без отправки данных на сервер
 // тесты для проверки сжатия
 func TestNewRouterCompressHandler(t *testing.T) {
+
+	defer func() {
+		dbHandler := dbconn.GetDBHandler()
+		dbHandler.Close()
+	}()
 
 	var storageShortLink = storageShort.NewStorageShorts()
 	storageShortLink.SetData(

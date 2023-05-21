@@ -206,8 +206,12 @@ func (dh dataHandler) getFullLinkByShort(res http.ResponseWriter, req *http.Requ
 // Получение Url-адреса по короткой ссылке
 func (dh dataHandler) getStatusPingDB(res http.ResponseWriter, req *http.Request) {
 
-	connect := connDB.GetConnect()
-	err := connect.Ping()
+	dbHandler := connDB.GetDBHandler()
+	err := dbHandler.GetErrSetup()
+	if err != nil {
+		err = dbHandler.Ping()
+	}
+
 	if err != nil {
 		err = fmt.Errorf("ошибка: пинг БД завершился ошибкой: %w", err)
 		strError := err.Error()
@@ -219,6 +223,7 @@ func (dh dataHandler) getStatusPingDB(res http.ResponseWriter, req *http.Request
 	} else {
 		res.WriteHeader(http.StatusOK)
 	}
+
 }
 
 // создание обработчика запросов

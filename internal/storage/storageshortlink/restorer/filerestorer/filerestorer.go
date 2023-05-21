@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 )
 
+// Тип для восстановителя коротких ссылок из файла
 type FileRestorer struct {
 	pathfile string
 }
@@ -95,7 +96,7 @@ func (fileRestorer *FileRestorer) readerReadRow(reader *bufio.Scanner) (dataRow 
 }
 
 // Прочитать одну строчку в файле с данными востановления
-func (fileRestorer *FileRestorer) ReadRow() (dataRow restorer.RowDataRestorer, isLastRow bool, err error) {
+func (fileRestorer *FileRestorer) ReadRow() (dataRow restorer.RowDataRestorer, err error) {
 
 	file, err := fileRestorer.openFile()
 	defer func() {
@@ -106,7 +107,7 @@ func (fileRestorer *FileRestorer) ReadRow() (dataRow restorer.RowDataRestorer, i
 	}
 
 	reader := bufio.NewScanner(file)
-	dataRow, isLastRow, err = fileRestorer.readerReadRow(reader)
+	dataRow, _, err = fileRestorer.readerReadRow(reader)
 	return
 }
 
@@ -137,6 +138,21 @@ func (fileRestorer *FileRestorer) ReadAll() (allRows []restorer.RowDataRestorer,
 		if isLastRow {
 			break
 		}
+	}
+	return
+}
+
+// Очистить данные хранилища
+func (fileRestorer *FileRestorer) ClearRows() (err error) {
+	file, err := fileRestorer.openFile()
+	if err != nil {
+		logger.GetLogger().Error("ошибка открытия файла хранилища: " + err.Error())
+	} else {
+		err := file.Truncate(0)
+		if err != nil {
+			logger.GetLogger().Error("ошибка очистки файла хранилища: " + err.Error())
+		}
+		file.Close()
 	}
 	return
 }

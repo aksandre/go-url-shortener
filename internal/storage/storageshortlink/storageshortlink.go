@@ -6,6 +6,7 @@ import (
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
 	restorer "go-url-shortener/internal/storage/storageshortlink/restorer"
+	dbRestorer "go-url-shortener/internal/storage/storageshortlink/restorer/dbrestorer"
 	fileRestorer "go-url-shortener/internal/storage/storageshortlink/restorer/filerestorer"
 	"log"
 )
@@ -33,6 +34,7 @@ type StorageShortInterface interface {
 	SetData(data DataStorageShortLink) (err error)
 	GetCountLink() (count int, err error)
 	GetShortLinks() (shortLinks DataStorageShortLink, err error)
+	GetRestorer() (restorer restorer.Restorer, err error)
 	Init() (err error)
 }
 
@@ -43,18 +45,29 @@ type StorageShortLink struct {
 }
 
 func NewStorageShorts() StorageShortInterface {
-	// путь из конфигурации до файла хранилища с короткими ссылками
-	pathFileStorage := config.GetAppConfig().GetFileStoragePath()
-	return NewStorageShortsFromFileStorage(pathFileStorage)
+
+	// название таблицы в базе данных с короткими ссылками
+	nameTableRestorer := config.GetAppConfig().GetNameTableRestorer()
+	storage, err := NewStorageShortsFromDB(nameTableRestorer)
+	if err != nil {
+		// путь из конфигурации до файла хранилища с короткими ссылками
+		pathFileStorage := config.GetAppConfig().GetFileStoragePath()
+		storage, err = NewStorageShortsFromFileStorage(pathFileStorage)
+		if err != nil {
+			log.Fatal("Не удалось инициализировать хранилище ссылок")
+		}
+	}
+	return storage
 }
 
-func NewStorageShortsFromFileStorage(pathFileStorage string) StorageShortInterface {
+// создание хранилища на базе файла
+func NewStorageShortsFromFileStorage(pathFileStorage string) (StorageShortInterface, error) {
 
 	data := make(DataStorageShortLink)
 	storageRestorer, err := fileRestorer.NewFileRestorer(pathFileStorage)
 	if err != nil {
-		logger.GetLogger().Error("При инициализации хранилища ссылок возникла ошибка: " + err.Error())
-		log.Fatal("При инициализации хранилища ссылок возникла ошибка: " + err.Error())
+		logger.GetLogger().Error("При инициализации хранилища ссылок в Файле возникла ошибка: " + err.Error())
+		return nil, err
 	}
 
 	storage := &StorageShortLink{
@@ -62,7 +75,28 @@ func NewStorageShortsFromFileStorage(pathFileStorage string) StorageShortInterfa
 		Restorer: storageRestorer,
 	}
 	storage.Init()
-	return storage
+	return storage, nil
+}
+
+// создание хранилища на базе таблицы базы данных
+func NewStorageShortsFromDB(nameTable string) (StorageShortInterface, error) {
+
+	logger.GetLogger().Debug("Используется таблица для хранения коротких ссылок: " + nameTable)
+
+	data := make(DataStorageShortLink)
+	// путь из конфигурации до файла хранилища с короткими ссылками
+	storageRestorer, err := dbRestorer.NewDBRestorer(nameTable)
+	if err != nil {
+		logger.GetLogger().Error("При инициализации хранилища ссылок в БД возникла ошибка: " + err.Error())
+		return nil, err
+	}
+
+	storage := &StorageShortLink{
+		Data:     data,
+		Restorer: storageRestorer,
+	}
+	storage.Init()
+	return storage, nil
 }
 
 func (store *StorageShortLink) SetData(data DataStorageShortLink) (err error) {
@@ -129,7 +163,9 @@ func (store *StorageShortLink) SetRestorer(restorer restorer.Restorer) (err erro
 	return
 }
 
-func (store *StorageShortLink) clearData() (err error) {
+// Удаление данных из памяти
+// Данные Ресторера не трогаем
+func (store *StorageShortLink) clearMemoryData() (err error) {
 	emptyData := make(DataStorageShortLink)
 	store.SetData(emptyData)
 	return
@@ -143,7 +179,7 @@ func (store *StorageShortLink) InitRestorer(restorer restorer.Restorer) (err err
 
 func (store *StorageShortLink) Restore() (err error) {
 
-	store.clearData()
+	store.clearMemoryData()
 
 	listRows, err := store.Restorer.ReadAll()
 	logger.GetLogger().Debugf("Прочитано коротких ссылок из файла хранилища: %d", len(listRows))
@@ -164,6 +200,11 @@ func (store *StorageShortLink) Restore() (err error) {
 
 		store.SetData(dataStorage)
 	}
+	return
+}
+
+func (store *StorageShortLink) GetRestorer() (restorer restorer.Restorer, err error) {
+	restorer = store.Restorer
 	return
 }
 

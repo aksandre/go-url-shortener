@@ -2,57 +2,106 @@ package connect
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
 	"time"
 
-	pgx "github.com/jackc/pgx/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type connectionDb struct {
-	conn *pgx.Conn
+type DBHandler struct {
+	poolConn *sql.DB
+	// Флаг, что подключение к БД было успешно
+	isSuccessSetup bool
+	// Ошибка установки объекта для работы с БД
+	errSetup error
+	// флаг, что соединение закрыли
+	isClosed bool
 }
 
-func (connDb *connectionDb) Close() {
-	if connDb.conn != nil {
-		connDb.conn.Close(context.Background())
-	}
+// соединение готово к работе
+func (dbHandler *DBHandler) isReady() bool {
+	return (dbHandler.isSuccessSetup && !dbHandler.isClosed)
 }
 
-// инициализация сущности
-func (connDb *connectionDb) initConnect(databaseDsn string) {
-
-	// закроем старое соединение
-	connDb.Close()
-
-	if databaseDsn == "" {
-		// получаем источник подключения к БД из конфига
-		databaseDsn = config.GetAppConfig().GetDatabaseDsn()
+func (dbHandler *DBHandler) GetErrSetup() (err error) {
+	if !dbHandler.isSuccessSetup {
+		return dbHandler.errSetup
 	}
+	return nil
+}
 
-	// databaseDsn = "postgres://postgres:123456789@localhost:5432/test_psg"
-	// databaseDsn = "user=postgres password=123456789 host=localhost port=5432 dbname=test_psg"
+func (dbHandler *DBHandler) GetPool() (db *sql.DB) {
+	return dbHandler.poolConn
+}
+
+func (dbHandler *DBHandler) Close() (err error) {
+
+	if dbHandler.isReady() {
+		// закрываем соединения с БД
+		err = dbHandler.poolConn.Close()
+		if err != nil {
+			logger.GetLogger().Debug("Не удалось закрыть соединение с БД: " + err.Error())
+		} else {
+			// выставляем флаг, что закрыли соединение
+			dbHandler.isClosed = true
+			logger.GetLogger().Debug("Закрыли соединение с БД")
+		}
+	}
+	return
+}
+
+// установка соединения с БД
+func (dbHandler *DBHandler) initDB(databaseDsn string) (err error) {
+
+	//databaseDsn = "postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable"
+	//databaseDsn = "user=postgres password=123456789 host=localhost port=5432 dbname=test_psg"
+	logger.GetLogger().Debug("Используемый databaseDsn :" + databaseDsn)
+
 	// config, err := pgx.ParseConfig(databaseDsn)
-	connect, err := pgx.Connect(context.Background(), databaseDsn)
+	// connect, err := pgx.Connect(context.Background(), databaseDsn)
+	dbValue, err := sql.Open("pgx", databaseDsn)
 	if err != nil {
-		err = fmt.Errorf("ошибка: невозможно подключиться к базе данных: %w", err)
+		err = fmt.Errorf("ошибка: невозможно подключиться к базе данных по переданных доступам: %w", err)
 		strError := err.Error()
 		logger.GetLogger().Errorf("%s", strError)
 	} else {
-		connDb.conn = connect
+		dbHandler.poolConn = dbValue
+		logger.GetLogger().Debug("Открыли соединение с БД")
 	}
+
+	return err
 }
 
 // инициализация сущности
-func (connDb *connectionDb) Ping() (err error) {
+func (dbHandler *DBHandler) setup(databaseDsn string) (err error) {
 
-	if connDb.conn != nil {
+	err = dbHandler.initDB(databaseDsn)
+	if err != nil {
+		dbHandler.errSetup = err
+	} else {
+		err = dbHandler.Ping()
+		if err != nil {
+			dbHandler.errSetup = err
+		} else {
+			dbHandler.isSuccessSetup = true
+		}
+	}
+
+	return
+}
+
+// проверка подключения к БД в течении нкоторого времени
+func (dbHandler *DBHandler) Ping() (err error) {
+
+	if dbHandler.poolConn != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		logger.GetLogger().Debugf("Соединение %+v", connDb.conn)
-		err = connDb.conn.Ping(ctx)
+		//logger.GetLogger().Debugf("Соединение с базой данных: %+v", dbHandler.poolConn)
+		err = dbHandler.poolConn.PingContext(ctx)
 	} else {
 		err = errors.New("ошибка: не было установлено соединение с базой данных")
 	}
@@ -61,21 +110,31 @@ func (connDb *connectionDb) Ping() (err error) {
 }
 
 // переменная поключения к БД
-var connection connectionDb
-
-// Маркер синглтона, что сущность, уже инициировали
-var setupConnection = false
+var dbHandler = &DBHandler{}
 
 // метод получения соединения с БД
-func GetConnect() *connectionDb {
-	if !setupConnection {
-		connection.initConnect("")
-		setupConnection = true
+func GetDBHandler() *DBHandler {
+	if !dbHandler.isReady() {
+		dbHandler = NewDBHandler("")
 	}
-	return &connection
+	return dbHandler
 }
 
 // публичный метод установки соединения с БД
-func SetConnect(conn connectionDb) {
-	connection = conn
+func SetDBHandler(dbValue *DBHandler) {
+	dbHandler = dbValue
+}
+
+// Конструктор обработчика соединения с БД
+// Надо создавать объект через него
+func NewDBHandler(databaseDsn string) (dbHandler *DBHandler) {
+
+	if databaseDsn == "" {
+		configDatabaseDsn := config.GetAppConfig().GetDatabaseDsn()
+		databaseDsn = configDatabaseDsn
+	}
+
+	dbHandler = &DBHandler{}
+	dbHandler.setup(databaseDsn)
+	return
 }

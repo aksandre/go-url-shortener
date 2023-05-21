@@ -15,9 +15,10 @@ type EnviromentConfigType struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	DatabaseDsn     string `env:"DATABASE_DSN"`
 
-	LogsPath     string `env:"LOGS_PATH_GOLANG"`
-	LevelLogs    int    `env:"LEVEL_LOGS_GOLANG"`
-	UserHomePath string `env:"USER_HOME_PATH"`
+	LogsPath          string `env:"LOGS_PATH_GOLANG"`
+	LevelLogs         int    `env:"LEVEL_LOGS_GOLANG"`
+	UserHomePath      string `env:"USER_HOME_PATH"`
+	NameTableRestorer string `env:"NAME_TABLE_RESTORER"`
 }
 
 // Глобальные переменные окружения

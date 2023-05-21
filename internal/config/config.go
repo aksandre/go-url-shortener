@@ -13,6 +13,9 @@ type ConfigTypeInterface interface {
 	GetDatabaseDsn() string
 	SetDatabaseDsn(string)
 
+	GetNameTableRestorer() string
+	SetNameTableRestorer(string)
+
 	// для логирования
 	GetLogsPath() string
 	SetLogsPath(string)
@@ -29,9 +32,10 @@ type ConfigType struct {
 	fileStoragePath string
 	databaseDsn     string
 
-	logsPath     string
-	levelLogs    int
-	userHomePath string
+	logsPath          string
+	levelLogs         int
+	userHomePath      string
+	nameTableRestorer string
 }
 
 func (ct *ConfigType) SetAddrServer(value string) {
@@ -74,6 +78,14 @@ func (ct *ConfigType) GetFileStoragePath() string {
 	return ct.fileStoragePath
 }
 
+func (ct *ConfigType) SetNameTableRestorer(value string) {
+	ct.nameTableRestorer = value
+}
+
+func (ct *ConfigType) GetNameTableRestorer() string {
+	return ct.nameTableRestorer
+}
+
 func (ct *ConfigType) GetUserHomePath() string {
 	return ct.userHomePath
 }
@@ -111,6 +123,11 @@ func (ct *ConfigType) installConfig() {
 	ct.databaseDsn = flags.DatabaseDsn
 	if envVars.DatabaseDsn != "" {
 		ct.databaseDsn = envVars.DatabaseDsn
+	}
+
+	ct.nameTableRestorer = flags.NameTableRestorer
+	if envVars.NameTableRestorer != "" {
+		ct.nameTableRestorer = envVars.NameTableRestorer
 	}
 
 	ct.levelLogs = flags.LevelLogs

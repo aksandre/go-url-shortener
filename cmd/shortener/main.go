@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
+	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/handlers"
 	"go-url-shortener/internal/logger"
 	"go-url-shortener/internal/storage/storageshortlink"
@@ -13,6 +14,11 @@ import (
 )
 
 func main() {
+
+	defer func() {
+		dbHandler := dbconn.GetDBHandler()
+		dbHandler.Close()
+	}()
 
 	// Получаем конфиг
 	configApp := config.GetAppConfig()
@@ -74,6 +80,8 @@ xhr.open("GET", '/MIy3I6N4', true);
 
 // go build -o shortener.exe
 
+// go run cmd/shortener/main.go --d=postgres://postgres:123456789@localhost:5432/test_psg
+
 // go run cmd/shortener/main.go --a="localhost:8010" --b="https://serviceshort.ru:8020"
 // go run cmd/shortener/main.go --a="localhost:8080" --b="http://localhost:8080" --f="C:\Users\LENOVO\goLogs\testlogShortener.log"
 
@@ -86,4 +94,5 @@ xhr.open("GET", '/MIy3I6N4', true);
 // shortenertest -test.v -test.run=^TestIteration8$ -binary-path=cmd/shortener/shortener -source-path=.
 // shortenertest -test.v -test.run=^TestIteration9$ -source-path=. -binary-path=cmd/shortener/shortener
 
-// shortenertest -test.v -test.run=^TestIteration10$ -source-path=. -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@postgres:5432/praktikum?sslmode=disable
+// shortenertest -test.v -test.run=^TestIteration10$ -source-path=. -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable
+// shortenertest -test.v -test.run=^TestIteration11$ -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable
