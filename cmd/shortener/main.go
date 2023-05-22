@@ -42,6 +42,7 @@ func main() {
 		logger.GetLogger().Fatalf("%s", strError)
 		log.Fatal(strError)
 	}
+
 }
 
 /*
@@ -67,7 +68,7 @@ xhr.open("GET", '/MIy3I6N4', true);
 // SET BASE_URL=https://localhost:8041/hhhh/
 // SET FILE_STORAGE_PATH=C:\Users\LENOVO\testLog.log
 
-// SET DATABASE_DSN=postgres://postgres:123456789@localhost:5432/test_psg
+// SET DATABASE_DSN=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable
 
 // SET LEVEL_LOGS_GOLANG=6
 
@@ -86,6 +87,7 @@ xhr.open("GET", '/MIy3I6N4', true);
 // go run cmd/shortener/main.go --a="localhost:8080" --b="http://localhost:8080" --f="C:\Users\LENOVO\goLogs\testlogShortener.log"
 
 // shortenertest -test.v -test.run=^TestIteration1$ -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
+// shortenertest -test.v -test.run=^TestIteration2$ -source-path=.
 // shortenertest -test.v -test.run=^TestIteration4$ -source-path=. -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
 // shortenertest -test.v -test.run=^TestIteration5$ -binary-path=cmd/shortener/shortener -server-host=localhost -server-port=8050 -server-base-url="http://localhost:8050"
 

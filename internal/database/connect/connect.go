@@ -59,18 +59,25 @@ func (dbHandler *DBHandler) initDB(databaseDsn string) (err error) {
 
 	//databaseDsn = "postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable"
 	//databaseDsn = "user=postgres password=123456789 host=localhost port=5432 dbname=test_psg"
-	logger.GetLogger().Debug("Используемый databaseDsn :" + databaseDsn)
 
-	// config, err := pgx.ParseConfig(databaseDsn)
-	// connect, err := pgx.Connect(context.Background(), databaseDsn)
-	dbValue, err := sql.Open("pgx", databaseDsn)
-	if err != nil {
-		err = fmt.Errorf("ошибка: невозможно подключиться к базе данных по переданных доступам: %w", err)
-		strError := err.Error()
-		logger.GetLogger().Errorf("%s", strError)
+	if databaseDsn != "" {
+		logger.GetLogger().Debug("Используемый databaseDsn :" + databaseDsn)
+
+		// config, err := pgx.ParseConfig(databaseDsn)
+		// connect, err := pgx.Connect(context.Background(), databaseDsn)
+		dbValue, err := sql.Open("pgx", databaseDsn)
+		if err != nil {
+			err = fmt.Errorf("ошибка: невозможно подключиться к базе данных по переданных доступам: %w", err)
+			strError := err.Error()
+			logger.GetLogger().Errorf("%s", strError)
+		} else {
+			dbHandler.poolConn = dbValue
+			logger.GetLogger().Debug("Открыли соединение с БД")
+		}
 	} else {
-		dbHandler.poolConn = dbValue
-		logger.GetLogger().Debug("Открыли соединение с БД")
+		errStr := "передан пустой databaseDsn для подключения к БД, соединение с БД невозможно сделать."
+		err = errors.New(errStr)
+		logger.GetLogger().Debug(errStr)
 	}
 
 	return err

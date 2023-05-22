@@ -6,7 +6,6 @@ import (
 	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
 	storageShort "go-url-shortener/internal/storage/storageshortlink"
-	"log"
 	"strings"
 
 	"net/http"
@@ -20,20 +19,33 @@ import (
 // Это тесты с реальной отправкой данных на сервер
 func TestDBRestorerStorageHandlerServer(t *testing.T) {
 
+	// получаем значение подключения к БД
+	// если установлено, но запускаем тесты
+	configDatabaseDsn := config.GetAppConfig().GetDatabaseDsn()
+	if configDatabaseDsn == "" {
+		logger.GetLogger().Debugf("Тесты работы с базой данных не выполнялись: пустое значение DatabaseDsn")
+		return
+	}
+
 	// имя тестовой таблицы
 	nameTableRestorer := "temp_table_restore"
-	logger.GetLogger().Debugf("Таблица для хранения коротких ссылок: %s", nameTableRestorer)
 
+	// флаг, что критичная ошибка, после нее не будем продолжать тесты
+	isCriticalErr := false
 	nameMyTest := "Check create DB storage"
 	t.Run(nameMyTest, func(t *testing.T) {
 		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest)
 		_, err := storageShort.NewStorageShortsFromDB(nameTableRestorer)
 		assert.NoError(t, err)
 		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest)
+
 		if err != nil {
-			log.Fatal(err)
+			isCriticalErr = true
 		}
 	})
+	if isCriticalErr {
+		return
+	}
 
 	// создаем пустое хранилище
 	storageShortLink, _ := storageShort.NewStorageShortsFromDB(nameTableRestorer)

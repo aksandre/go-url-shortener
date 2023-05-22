@@ -5,7 +5,6 @@ import (
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
 	storageShort "go-url-shortener/internal/storage/storageshortlink"
-	"log"
 	"os"
 	"strings"
 
@@ -24,16 +23,22 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 	pathTempFile := os.TempDir() + "/storage/tempStorage.txt"
 	logger.GetLogger().Debugf("Путь до файла хранилища ссылок: %+v", pathTempFile)
 
+	// флаг, что критичная ошибка, после нее не будем продолжать тесты
+	isCriticalErr := false
 	nameMyTest := "Check create File storage"
 	t.Run(nameMyTest, func(t *testing.T) {
 		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest)
 		_, err := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
 		assert.NoError(t, err)
 		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest)
+
 		if err != nil {
-			log.Fatal(err)
+			isCriticalErr = true
 		}
 	})
+	if isCriticalErr {
+		return
+	}
 
 	// создаем пустое хранилище
 	storageShortLink, _ := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
