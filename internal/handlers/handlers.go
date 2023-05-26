@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"go-url-shortener/internal/app/service"
@@ -36,7 +37,9 @@ func (dh dataHandler) getUserListShortLinksByJSON(res http.ResponseWriter, req *
 	} else {
 		listFullURL = userData.ListFullURL
 	}
-	listShortLinks, err := dh.service.GetDataShortLinks(listFullURL)
+
+	ctx := context.TODO()
+	listShortLinks, err := dh.service.GetDataShortLinks(ctx, listFullURL)
 	logger.GetLogger().Debugf("Список существующих коротких ссылок %+v", listShortLinks)
 
 	if err != nil {
@@ -102,7 +105,8 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 
 	logger.GetLogger().Debugf("Для генерации короткой ссылки пришел Url: %s", urlFull)
 
-	serviceLink, err := dh.service.GetServiceLinkByURL(urlFull)
+	ctx := context.TODO()
+	serviceLink, err := dh.service.GetServiceLinkByURL(ctx, urlFull)
 	logger.GetLogger().Debugf("Сделали короткую ссылку: %s", serviceLink)
 
 	if err != nil {
@@ -153,7 +157,8 @@ func (dh dataHandler) getServiceLinkByURL(res http.ResponseWriter, req *http.Req
 	urlFull = strings.TrimSpace(urlFull)
 	logger.GetLogger().Debugf("Для генерации короткой ссылки пришел Url: %s", urlFull)
 
-	serviceLink, err := dh.service.GetServiceLinkByURL(urlFull)
+	ctx := context.TODO()
+	serviceLink, err := dh.service.GetServiceLinkByURL(ctx, urlFull)
 	logger.GetLogger().Debugf("Сделали короткую ссылку: %s", serviceLink)
 
 	if err != nil {
@@ -187,7 +192,8 @@ func (dh dataHandler) getFullLinkByShort(res http.ResponseWriter, req *http.Requ
 	shortLink = strings.TrimSpace(shortLink)
 	logger.GetLogger().Debugf("Пришла короткая ссылка: %s", shortLink)
 
-	fullLink, err := dh.service.GetFullLinkByShort(shortLink)
+	ctx := context.TODO()
+	fullLink, err := dh.service.GetFullLinkByShort(ctx, shortLink)
 	logger.GetLogger().Debugf("Получили полную ссылку: %s", fullLink)
 
 	if err != nil {

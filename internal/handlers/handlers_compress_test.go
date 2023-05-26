@@ -3,13 +3,16 @@ package handlers
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
+	modelsStorage "go-url-shortener/internal/models/storageshortlink"
 	storageShort "go-url-shortener/internal/storage/storageshortlink"
 	"io"
 	"log"
+	"os"
 
 	"net/http"
 	"net/http/httptest"
@@ -36,20 +39,44 @@ func compressText(text string) []byte {
 // тесты для проверки сжатия
 func TestNewRouterCompressHandler(t *testing.T) {
 
+	// устанавливаем данные конфигурации для теста
+	func() {
+		// имя временного файла с хранилищем
+		pathTempFile := os.TempDir() + "/storage/testStorage.txt"
+		// имя тестовой таблицы
+		nameTestTable := "test_table_restore"
+		config := config.GetAppConfig()
+		config.SetFileStoragePath(pathTempFile)
+		config.SetNameTableRestorer(nameTestTable)
+
+		// дебаг режим
+		config.SetLevelLogs(6)
+	}()
+
+	// контекст
+	ctx := context.TODO()
+
 	defer func() {
+		var storageShortLink = storageShort.NewStorageShorts()
+		err := storageShortLink.ClearStorage(ctx)
+		if err != nil {
+			logger.GetLogger().Debug("не смогли очистить данные хранилища: " + err.Error())
+		}
+
 		dbHandler := dbconn.GetDBHandler()
 		dbHandler.Close()
 	}()
 
 	var storageShortLink = storageShort.NewStorageShorts()
 	storageShortLink.SetData(
-		storageShort.DataStorageShortLink{
-			"RRRTTTTT": storageShort.RowStorageShortLink{
+		ctx,
+		modelsStorage.DataStorageShortLink{
+			"RRRTTTTT": modelsStorage.RowStorageShortLink{
 				ShortLink: "RRRTTTTT",
 				FullURL:   "https://testSite.com",
 				UUID:      "1",
 			},
-			"UUUUUU": storageShort.RowStorageShortLink{
+			"UUUUUU": modelsStorage.RowStorageShortLink{
 				ShortLink: "UUUUUU",
 				FullURL:   "https://dsdsdsdds.com",
 				UUID:      "2",

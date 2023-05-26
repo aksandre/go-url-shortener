@@ -75,7 +75,7 @@ func (dbHandler *DBHandler) initDB(databaseDsn string) (err error) {
 			logger.GetLogger().Debug("Открыли соединение с БД")
 		}
 	} else {
-		errStr := "передан пустой databaseDsn для подключения к БД, соединение с БД невозможно сделать."
+		errStr := "передан пустой databaseDsn для подключения к БД, соединение с БД невозможно сделать"
 		err = errors.New(errStr)
 		logger.GetLogger().Debug(errStr)
 	}

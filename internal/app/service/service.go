@@ -1,10 +1,11 @@
 package service
 
 import (
+	"context"
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
 	modelsResponses "go-url-shortener/internal/models/responses"
-	storageShort "go-url-shortener/internal/storage/storageshortlink"
+	modelsStorage "go-url-shortener/internal/models/storageshortlink"
 
 	"errors"
 	"math/rand"
@@ -17,7 +18,7 @@ func getPackageError(textError string) error {
 }
 
 // создание сервис коротких ссылок
-func NewServiceShortLink(storage storageShort.StorageShortInterface, configApp config.ConfigTypeInterface) ServiceShortInterface {
+func NewServiceShortLink(storage modelsStorage.StorageShortInterface, configApp config.ConfigTypeInterface) ServiceShortInterface {
 	return &ServiceShortLink{
 		configApp:       configApp,
 		storage:         storage,
@@ -29,15 +30,15 @@ type RowShortLink modelsResponses.ResponseListShortLinks
 type ListShortLinks []RowShortLink
 
 type ServiceShortInterface interface {
-	GetServiceLinkByURL(fullURL string) (serviceLink string, err error)
-	GetFullLinkByShort(shortLink string) (fullURL string, err error)
-	GetDataShortLinks(listFullURL any) (shortLinks ListShortLinks, err error)
+	GetServiceLinkByURL(ctx context.Context, fullURL string) (serviceLink string, err error)
+	GetFullLinkByShort(ctx context.Context, shortLink string) (fullURL string, err error)
+	GetDataShortLinks(ctx context.Context, listFullURL any) (shortLinks ListShortLinks, err error)
 	getHostShortLink() string
 	SetLength(length int)
 }
 
 type ServiceShortLink struct {
-	storage         storageShort.StorageShortInterface
+	storage         modelsStorage.StorageShortInterface
 	lengthShortLink int
 	configApp       config.ConfigTypeInterface
 }
@@ -68,7 +69,7 @@ func (service *ServiceShortLink) getHostShortLink() string {
 
 // Получаем слайс данных коротких ссылок из хранилища
 // listFullURL - это слайс полных ссылок, для которых мы получаем списко коротких ссылок
-func (service *ServiceShortLink) GetDataShortLinks(listFullURL any) (shortLinks ListShortLinks, err error) {
+func (service *ServiceShortLink) GetDataShortLinks(ctx context.Context, listFullURL any) (shortLinks ListShortLinks, err error) {
 
 	isFilterFullURL := false
 	sliceListFullURL, ok := listFullURL.([]string)
@@ -76,7 +77,7 @@ func (service *ServiceShortLink) GetDataShortLinks(listFullURL any) (shortLinks 
 		isFilterFullURL = true
 	}
 
-	listAllLinks, err := service.storage.GetShortLinks()
+	listAllLinks, err := service.storage.GetShortLinks(ctx)
 	if err != nil {
 		return
 	}
@@ -117,9 +118,9 @@ func (service *ServiceShortLink) getShortLinkWithHost(shortLink string) (shortLi
 }
 
 // Получаем короткую ссылку с хостом по Url-адресу
-func (service *ServiceShortLink) GetServiceLinkByURL(fullURL string) (serviceLink string, err error) {
+func (service *ServiceShortLink) GetServiceLinkByURL(ctx context.Context, fullURL string) (serviceLink string, err error) {
 
-	shortLink, err := service.getShortLinkByURL(fullURL)
+	shortLink, err := service.getShortLinkByURL(ctx, fullURL)
 	if err == nil {
 		if shortLink != "" {
 			serviceLink, _ = service.getShortLinkWithHost(shortLink)
@@ -130,9 +131,9 @@ func (service *ServiceShortLink) GetServiceLinkByURL(fullURL string) (serviceLin
 }
 
 // Генерируем короткую ссылку по Url-адресу
-func (service *ServiceShortLink) getShortLinkByURL(fullURL string) (shortLink string, err error) {
+func (service *ServiceShortLink) getShortLinkByURL(ctx context.Context, fullURL string) (shortLink string, err error) {
 
-	shortLink, err = service.storage.GetShortLinkByURL(fullURL)
+	shortLink, err = service.storage.GetShortLinkByURL(ctx, fullURL)
 	if err == nil {
 		if shortLink != "" {
 			return
@@ -144,7 +145,7 @@ func (service *ServiceShortLink) getShortLinkByURL(fullURL string) (shortLink st
 			logger.GetLogger().Debugf("Сформировали новый код  %s", shortLink)
 
 			// добавим короткую ссылку в хранилище
-			err = service.storage.AddShortLinkForURL(fullURL, shortLink)
+			err = service.storage.AddShortLinkForURL(ctx, fullURL, shortLink)
 			logger.GetLogger().Debugf("Содержание storage %+v", service.storage)
 		}
 	}
@@ -153,9 +154,9 @@ func (service *ServiceShortLink) getShortLinkByURL(fullURL string) (shortLink st
 }
 
 // Получаем Url-адрес по короткой ссылке
-func (service *ServiceShortLink) GetFullLinkByShort(shortLink string) (fullURL string, err error) {
+func (service *ServiceShortLink) GetFullLinkByShort(ctx context.Context, shortLink string) (fullURL string, err error) {
 
-	fullURL, err = service.storage.GetFullLinkByShort(shortLink)
+	fullURL, err = service.storage.GetFullLinkByShort(ctx, shortLink)
 	if err != nil {
 		// должны показать ошибку
 		err = getPackageError("Короткая ссылка " + shortLink + " не зарегистрирована")

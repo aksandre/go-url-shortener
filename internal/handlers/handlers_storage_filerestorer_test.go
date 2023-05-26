@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
+	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
-	storageShort "go-url-shortener/internal/storage/storageshortlink"
+	storagerestorer "go-url-shortener/internal/storage/storageshortlink/storagerestorer"
 	"os"
 	"strings"
 
@@ -20,15 +22,42 @@ import (
 func TestFileRestorerStorageHandlerServer(t *testing.T) {
 
 	// имя временного файла с хранилищем
-	pathTempFile := os.TempDir() + "/storage/tempStorage.txt"
+	pathTempFile := os.TempDir() + "/storage/testStorage.txt"
 	logger.GetLogger().Debugf("Путь до файла хранилища ссылок: %+v", pathTempFile)
+
+	// устанавливаем данные конфигурации для теста
+	func() {
+
+		// имя тестовой таблицы
+		nameTestTable := "test_table_restore"
+		config := config.GetAppConfig()
+		config.SetFileStoragePath(pathTempFile)
+		config.SetNameTableRestorer(nameTestTable)
+
+		// дебаг режим
+		config.SetLevelLogs(6)
+	}()
+
+	// контекст
+	ctx := context.TODO()
+
+	defer func() {
+		var storageShortLink, _ = storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
+		err := storageShortLink.ClearStorage(ctx)
+		if err != nil {
+			logger.GetLogger().Debug("не смогли очистить данные хранилища: " + err.Error())
+		}
+
+		dbHandler := dbconn.GetDBHandler()
+		dbHandler.Close()
+	}()
 
 	// флаг, что критичная ошибка, после нее не будем продолжать тесты
 	isCriticalErr := false
 	nameMyTest := "Check create File storage"
 	t.Run(nameMyTest, func(t *testing.T) {
 		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest)
-		_, err := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
+		_, err := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
 		assert.NoError(t, err)
 		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest)
 
@@ -41,25 +70,17 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 	}
 
 	// создаем пустое хранилище
-	storageShortLink, _ := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
-	fileRestorer, _ := storageShortLink.GetRestorer()
+	storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
 
 	testFullURL1 := "https://dsdsdsdds.com"
 	testShortLink1 := "UUUUUUUU"
-	storageShortLink.AddShortLinkForURL(testFullURL1, testShortLink1)
+	storageShortLink.AddShortLinkForURL(ctx, testFullURL1, testShortLink1)
 
 	testFullURL2 := "https://testSite.com"
 	testShortLink2 := "RRRTTTTT"
-	storageShortLink.AddShortLinkForURL(testFullURL2, testShortLink2)
+	storageShortLink.AddShortLinkForURL(ctx, testFullURL2, testShortLink2)
 
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
-
-	defer func() {
-		err := fileRestorer.ClearRows()
-		if err != nil {
-			logger.GetLogger().Debug("не смогли очистить данные хранилища: " + err.Error())
-		}
-	}()
 
 	nameMyTest2 := "Check count link after restore"
 	t.Run(nameMyTest, func(t *testing.T) {
@@ -67,9 +88,9 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest2)
 
 		// новое хранилище, при инициализации должно заполниться
-		storageShortLink, _ := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
+		storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
 		// вверху добавили две ссылки, проверяем, что в хранилище две ссылки
-		countLinks, _ := storageShortLink.GetCountLink()
+		countLinks, _ := storageShortLink.GetCountLink(ctx)
 		assert.Equal(t, countLinks, 2)
 
 		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest)
@@ -123,7 +144,7 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 			configApp := config.GetAppConfig()
 
 			// новое хранилище, при инициализации должно заполниться
-			storageShortLink, _ := storageShort.NewStorageShortsFromFileStorage(pathTempFile)
+			storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
 			logger.GetLogger().Debugf("Восстановленные данные хранилища ссылок: %+v", storageShortLink)
 
 			serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)

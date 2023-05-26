@@ -1,10 +1,10 @@
-package filerestorer
+package dbrestorer
 
 import (
 	"fmt"
 	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
-	"go-url-shortener/internal/storage/storageshortlink/restorer"
+	"go-url-shortener/internal/storage/storageshortlink/storagerestorer/restorer"
 )
 
 // Тип для восстановителя коротких ссылок из базы данных
@@ -54,19 +54,22 @@ func (dbRestorer *DBRestorer) WriteRow(dataRow restorer.RowDataRestorer) (err er
 	return
 }
 
-// Прочитать одну строчку в файле с данными востановления
+// Прочитать строчки в базе по запросу
 func (dbRestorer *DBRestorer) readRows(sqlSelectQuery string) (allRows []restorer.RowDataRestorer, err error) {
 
 	dbHandler := dbconn.GetDBHandler()
 	poolConn := dbHandler.GetPool()
 	rows, err := poolConn.Query(sqlSelectQuery)
+	// обязательно закрываем чтение строк
+	defer func() {
+		if err == nil {
+			err = rows.Close()
+		}
+	}()
+
 	if err != nil {
 		return
 	}
-	// обязательно закрываем чтение строк
-	defer func() {
-		err = rows.Close()
-	}()
 
 	for rows.Next() {
 		var uuid string
@@ -134,7 +137,8 @@ func createRestoreTable(tableName string) (err error) {
 		"create table IF NOT EXISTS " + tableName + " (" +
 		"	ID SERIAL PRIMARY KEY," +
 		"	FULL_URL varchar(255)," +
-		"	SHORT_LINK varchar(255)" +
+		"	SHORT_LINK varchar(255)," +
+		"   CREATED TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
 		") "
 
 	_, err = poolConn.Exec(sqlCreateTable)

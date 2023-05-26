@@ -78,7 +78,7 @@ func WrapLogging(handler http.Handler) http.Handler {
 			"contentEncodingRequest": contentEncodingRequest,
 			"contentTypeRequest":     contentTypeRequest,
 		}
-		textLog := "### Зарегистрирован запрос: "
+		textLog := "*** Зарегистрирован запрос: "
 		obLogger := logger.GetLogger()
 		obLogger.WithFields(additinalFields).Info(textLog)
 	}

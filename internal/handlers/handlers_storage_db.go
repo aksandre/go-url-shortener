@@ -7,7 +7,6 @@ import (
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
-	storagerestorer "go-url-shortener/internal/storage/storageshortlink/storagerestorer"
 	"os"
 	"strings"
 
@@ -15,20 +14,21 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	storagedb "go-url-shortener/internal/storage/storageshortlink/storagedb"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 )
 
 // Это тесты с реальной отправкой данных на сервер
-func TestDBRestorerStorageHandlerServer(t *testing.T) {
-
-	// имя тестовой таблицы
-	var nameTestTable = "test_table_restore"
+func TestDBStorageHandlerServer(t *testing.T) {
 
 	// устанавливаем данные конфигурации для теста
 	func() {
 		// имя временного файла с хранилищем
 		pathTempFile := os.TempDir() + "/storage/testStorage.txt"
+		// имя тестовой таблицы
+		nameTestTable := "test_table_restore"
 		config := config.GetAppConfig()
 		config.SetFileStoragePath(pathTempFile)
 		config.SetNameTableRestorer(nameTestTable)
@@ -41,7 +41,7 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 	ctx := context.TODO()
 
 	defer func() {
-		var storageShortLink, _ = storagerestorer.NewStorageShortsFromDB(nameTestTable)
+		var storageShortLink, _ = storagedb.NewStorageShorts()
 		err := storageShortLink.ClearStorage(ctx)
 		if err != nil {
 			logger.GetLogger().Debug("не смогли очистить данные хранилища: " + err.Error())
@@ -65,7 +65,7 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 	nameMyTest := "Check create DB storage"
 	t.Run(nameMyTest, func(t *testing.T) {
 		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest)
-		_, err := storagerestorer.NewStorageShortsFromDB(nameTestTable)
+		_, err := storagedb.NewStorageShorts()
 		assert.NoError(t, err)
 		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest)
 
@@ -78,7 +78,7 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 	}
 
 	// создаем пустое хранилище
-	storageShortLink, _ := storagerestorer.NewStorageShortsFromDB(nameTestTable)
+	storageShortLink, _ := storagedb.NewStorageShorts()
 
 	testFullURL1 := "https://dsdsdsdds.com"
 	testShortLink1 := "UUUUUUUU"
@@ -90,25 +90,13 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
-	defer func() {
-		storageShortLink, _ := storagerestorer.NewStorageShortsFromDB(nameTestTable)
-		dbRestorer, _ := storageShortLink.GetRestorer()
-		err := dbRestorer.ClearRows()
-		if err != nil {
-			logger.GetLogger().Debug("не смогли очистить данные хранилища: " + err.Error())
-		}
-
-		dbHandler := dbconn.GetDBHandler()
-		dbHandler.Close()
-	}()
-
 	nameMyTest2 := "Check count link after restore"
 	t.Run(nameMyTest, func(t *testing.T) {
 
 		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest2)
 
 		// новое хранилище, при инициализации должно заполниться
-		storageShortLink, _ := storagerestorer.NewStorageShortsFromDB(nameTestTable)
+		storageShortLink, _ := storagedb.NewStorageShorts()
 		// вверху добавили две ссылки, проверяем, что в хранилище две ссылки
 		countLinks, _ := storageShortLink.GetCountLink(ctx)
 		assert.Equal(t, countLinks, 2)
@@ -163,7 +151,7 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 			configApp := config.GetAppConfig()
 
 			// новое хранилище, при инициализации должно заполниться
-			storageShortLink, _ := storagerestorer.NewStorageShortsFromDB(nameTestTable)
+			storageShortLink, _ := storagedb.NewStorageShorts()
 			logger.GetLogger().Debugf("Восстановленные данные хранилища ссылок: %+v", storageShortLink)
 
 			serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)

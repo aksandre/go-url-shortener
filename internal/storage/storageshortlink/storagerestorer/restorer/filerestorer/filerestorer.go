@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"go-url-shortener/internal/logger"
-	restorer "go-url-shortener/internal/storage/storageshortlink/restorer"
+	restorer "go-url-shortener/internal/storage/storageshortlink/storagerestorer/restorer"
 	"os"
 	"path/filepath"
 )
