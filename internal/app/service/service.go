@@ -4,12 +4,14 @@ import (
 	"context"
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
-	modelsResponses "go-url-shortener/internal/models/responses"
-	modelsStorage "go-url-shortener/internal/models/storageshortlink"
 
 	"errors"
+
+	modelsStorage "go-url-shortener/internal/models/storageshortlink"
 	"math/rand"
 	"strings"
+
+	modelsService "go-url-shortener/internal/models/service"
 )
 
 func getPackageError(textError string) error {
@@ -18,23 +20,12 @@ func getPackageError(textError string) error {
 }
 
 // создание сервис коротких ссылок
-func NewServiceShortLink(storage modelsStorage.StorageShortInterface, configApp config.ConfigTypeInterface) ServiceShortInterface {
+func NewServiceShortLink(storage modelsStorage.StorageShortInterface, configApp config.ConfigTypeInterface) modelsService.ServiceShortInterface {
 	return &ServiceShortLink{
 		configApp:       configApp,
 		storage:         storage,
 		lengthShortLink: 8,
 	}
-}
-
-type RowShortLink modelsResponses.ResponseListShortLinks
-type ListShortLinks []RowShortLink
-
-type ServiceShortInterface interface {
-	GetServiceLinkByURL(ctx context.Context, fullURL string) (serviceLink string, err error)
-	GetFullLinkByShort(ctx context.Context, shortLink string) (fullURL string, err error)
-	GetDataShortLinks(ctx context.Context, listFullURL any) (shortLinks ListShortLinks, err error)
-	getHostShortLink() string
-	SetLength(length int)
 }
 
 type ServiceShortLink struct {
@@ -69,7 +60,7 @@ func (service *ServiceShortLink) getHostShortLink() string {
 
 // Получаем слайс данных коротких ссылок из хранилища
 // listFullURL - это слайс полных ссылок, для которых мы получаем списко коротких ссылок
-func (service *ServiceShortLink) GetDataShortLinks(ctx context.Context, listFullURL any) (shortLinks ListShortLinks, err error) {
+func (service *ServiceShortLink) GetDataShortLinks(ctx context.Context, listFullURL any) (shortLinks modelsService.ListShortLinks, err error) {
 
 	isFilterFullURL := false
 	sliceListFullURL, ok := listFullURL.([]string)
@@ -77,7 +68,7 @@ func (service *ServiceShortLink) GetDataShortLinks(ctx context.Context, listFull
 		isFilterFullURL = true
 	}
 
-	listAllLinks, err := service.storage.GetShortLinks(ctx)
+	listAllLinks, err := service.storage.GetShortLinks(ctx, nil)
 	if err != nil {
 		return
 	}
@@ -100,7 +91,7 @@ func (service *ServiceShortLink) GetDataShortLinks(ctx context.Context, listFull
 			shortLink := rowData.ShortLink
 			shortLink, _ = service.getShortLinkWithHost(shortLink)
 
-			shortLinks = append(shortLinks, RowShortLink{
+			shortLinks = append(shortLinks, modelsService.RowShortLink{
 				ShortURL:    shortLink,
 				OriginalURL: rowData.FullURL,
 			})
@@ -158,8 +149,72 @@ func (service *ServiceShortLink) GetFullLinkByShort(ctx context.Context, shortLi
 
 	fullURL, err = service.storage.GetFullLinkByShort(ctx, shortLink)
 	if err != nil {
+		logger.GetLogger().Errorf("Ошибка при получении полной ссылки: %s", err.Error())
 		// должны показать ошибку
 		err = getPackageError("Короткая ссылка " + shortLink + " не зарегистрирована")
 	}
+	return
+}
+
+// получение коротких ссылок группой
+func (service *ServiceShortLink) GetBatchShortLink(ctx context.Context, listFullURL []string) (resultBatch modelsService.BatchShortLinks, err error) {
+
+	// Из списка запрашиваемых ссылок получим те, которые есть в хранилище
+	// Остальные это новые ссылки, сгенерируем для них короткие ссылки
+
+	options := &modelsStorage.OptionsQuery{
+		Filter: modelsStorage.FilterOptionsQuery{
+			ListFullURL: listFullURL,
+		},
+	}
+	rowsExists, err := service.storage.GetShortLinks(ctx, options)
+	if err != nil {
+		return
+	}
+
+	// создадим map с ключом раынм оригинальному URL , чтобы поиск сделать O(1)
+	mapFullURLs := make(modelsStorage.DataStorageShortLink, len(listFullURL))
+	for _, dataRow := range rowsExists {
+		fullURL := dataRow.FullURL
+		mapFullURLs[fullURL] = dataRow
+	}
+
+	// инициализируем результирующие данные
+	resultBatch = modelsService.BatchShortLinks{}
+
+	listBatchUnknowFullURLs := modelsStorage.DataStorageShortLink{}
+	for _, fullURL := range listFullURL {
+
+		dataRow, ok := mapFullURLs[fullURL]
+		if !ok {
+
+			// создаем новую короткую ссылку
+			lengthShort := service.lengthShortLink
+			shortLink := service.getRandString(lengthShort)
+			listBatchUnknowFullURLs[shortLink] = modelsStorage.RowStorageShortLink{
+				ShortLink: shortLink,
+				FullURL:   fullURL,
+			}
+
+			// добавляем в итоговый результат
+			shortLink, _ = service.getShortLinkWithHost(shortLink)
+			resultBatch[fullURL] = shortLink
+
+		} else {
+			// берем короткую ссылку из хранилища
+			shortLink := dataRow.ShortLink
+
+			// добавляем в итоговый результат
+			shortLink, _ = service.getShortLinkWithHost(shortLink)
+			resultBatch[fullURL] = shortLink
+		}
+	}
+
+	// добавим группу коротких ссылок
+	err = service.storage.AddBatchShortLinks(ctx, listBatchUnknowFullURLs)
+	if err != nil {
+		return nil, err
+	}
+
 	return
 }

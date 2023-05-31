@@ -12,11 +12,16 @@ import (
 func NewStorageShorts() modelsStorage.StorageShortInterface {
 
 	storage, err := NewStorageShortsDB()
-	if err != nil {
+	if err == nil {
+		logger.GetLogger().Debugln("Успешно создали хранилиже в Базе данных")
+	} else {
 		storage, err = NewStorageShortsRestorer()
-		if err != nil {
-			log.Fatal("Не удалось инициализировать хранилище ссылок")
+		if err == nil {
+			logger.GetLogger().Debugln("Успешно создали хранилиже как Ресторер")
+		} else {
+			log.Fatal("Выход из программы: не удалось инициализировать хранилище ссылок")
 		}
+
 	}
 	return storage
 }

@@ -6,6 +6,7 @@ import (
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
+	modelsService "go-url-shortener/internal/models/service"
 	modelsStorage "go-url-shortener/internal/models/storageshortlink"
 	storageShort "go-url-shortener/internal/storage/storageshortlink"
 	"os"
@@ -23,19 +24,17 @@ import (
 // Это тесты с реальной отправкой данных на сервер
 func TestNewRouterHandlerServer(t *testing.T) {
 
-	// устанавливаем данные конфигурации для теста
-	func() {
-		// имя временного файла с хранилищем
-		pathTempFile := os.TempDir() + "/storage/testStorage.txt"
-		// имя тестовой таблицы
-		nameTestTable := "test_table_restore"
-		config := config.GetAppConfig()
-		config.SetFileStoragePath(pathTempFile)
-		config.SetNameTableRestorer(nameTestTable)
-
-		// дебаг режим
-		config.SetLevelLogs(6)
-	}()
+	//--- Start устанавливаем данные конфигурации для теста
+	// имя тестовой таблицы
+	nameTestTable := "test_table_restore"
+	// имя временного файла с хранилищем
+	pathTempFile := os.TempDir() + "/storage/testStorage.json"
+	configApp := config.GetAppConfig()
+	configApp.SetFileStoragePath(pathTempFile)
+	configApp.SetNameTableRestorer(nameTestTable)
+	// дебаг режим
+	configApp.SetLevelLogs(6)
+	//--- End устанавливаем данные конфигурации для теста
 
 	// контекст
 	ctx := context.TODO()
@@ -70,8 +69,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 	)
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
-	// Создаем конфиг
-	configApp := config.GetAppConfig()
+	// инициализируем сервис на конфиге
 	serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)
 
 	// обработчик запросов
@@ -83,6 +81,9 @@ func TestNewRouterHandlerServer(t *testing.T) {
 	// останавливаем сервер после завершения теста
 	defer serverTest.Close()
 
+	// хост сервиса
+	hostService := configApp.GetHostShortLink()
+
 	type want struct {
 		statusCode  int
 		contentType string
@@ -92,7 +93,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		serviceShortLink service.ServiceShortInterface
+		serviceShortLink modelsService.ServiceShortInterface
 		method           string
 		url              string
 		body             string
@@ -105,7 +106,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			url:              "/",
 			body:             "https://google.com/",
 			want: want{
-				statusCode:  201,
+				statusCode:  http.StatusCreated,
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
@@ -130,7 +131,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			want: want{
 				statusCode:  http.StatusCreated,
 				contentType: "text/plain; charset=utf-8",
-				body:        "/UUUUUU",
+				body:        hostService + "/UUUUUU",
 			},
 		},
 
@@ -194,39 +195,57 @@ func TestNewRouterHandlerServer(t *testing.T) {
 				body:        "\"original_url\":\"https://google.com/",
 			},
 		},
-		/*
-			{
-				name:             "check DB",
-				serviceShortLink: serviceShortLink,
-				method:           http.MethodGet,
-				url:              "/ping",
-				body:             "",
-				want: want{
-					statusCode: http.StatusOK,
-				},
-			},*/
+
+		{
+			name:             "get batch short links from JSON request",
+			serviceShortLink: serviceShortLink,
+			method:           http.MethodPost,
+			url:              "/api/shorten/batch",
+			body:             "[{\"correlation_id\":\"123456\",\"original_url\":\"https://123456.com\"},{\"correlation_id\":\"456789\",\"original_url\":\"https://456789.com\"}]",
+			want: want{
+				statusCode:  http.StatusCreated,
+				contentType: "application/json",
+			},
+		},
+
+		{
+			name:             "get USER list short links after Batch",
+			serviceShortLink: serviceShortLink,
+			method:           http.MethodGet,
+			url:              "/api/user/urls",
+			body:             "",
+			want: want{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        "\"original_url\":\"https://456789.com",
+			},
+		},
 	}
 
 	// создаем cookie jar для сохранения cookies между запросами
 	jar, _ := cookiejar.New(nil)
-	// не используем реальный редирект
-	redirectPolicy := resty.NoRedirectPolicy()
-	// Будем делать реальные запросы
-	req := resty.New().
-		SetRedirectPolicy(redirectPolicy).
-		SetCookieJar(jar).
-		R().
-		SetHeader("Accept-Encoding", "")
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
 			logger.GetLogger().Debugf("### Начало теста: %s", tt.name)
 
+			// не используем реальный редирект
+			redirectPolicy := resty.NoRedirectPolicy()
+			// Будем делать реальные запросы
+			req := resty.New().
+				SetRedirectPolicy(redirectPolicy).
+				SetCookieJar(jar).
+				R().
+				SetHeader("Accept-Encoding", "")
+
 			req.SetBody(tt.body)
 			req.Method = tt.method
 			req.URL = serverTest.URL + tt.url
-			res, _ := req.Send()
+			res, err := req.Send()
+			if err != nil {
+				logger.GetLogger().Debug("Ошибка получения ответа:" + err.Error())
+			}
 
 			// проверяем код ответа
 			assert.Equal(t, tt.want.statusCode, res.StatusCode())

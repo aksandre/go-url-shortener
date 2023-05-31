@@ -6,6 +6,7 @@ import (
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
+	modelsService "go-url-shortener/internal/models/service"
 	modelsStorage "go-url-shortener/internal/models/storageshortlink"
 	storageShort "go-url-shortener/internal/storage/storageshortlink"
 	"io"
@@ -22,19 +23,17 @@ import (
 // Это тесты без отправки данных на сервер
 func TestNewRouterHandler(t *testing.T) {
 
-	// устанавливаем данные конфигурации для теста
-	func() {
-		// имя временного файла с хранилищем
-		pathTempFile := os.TempDir() + "/storage/testStorage.txt"
-		// имя тестовой таблицы
-		nameTestTable := "test_table_restore"
-		config := config.GetAppConfig()
-		config.SetFileStoragePath(pathTempFile)
-		config.SetNameTableRestorer(nameTestTable)
-
-		// дебаг режим
-		config.SetLevelLogs(6)
-	}()
+	//--- Start устанавливаем данные конфигурации для теста
+	// имя тестовой таблицы
+	nameTestTable := "test_table_restore"
+	// имя временного файла с хранилищем
+	pathTempFile := os.TempDir() + "/storage/testStorage.json"
+	configApp := config.GetAppConfig()
+	configApp.SetFileStoragePath(pathTempFile)
+	configApp.SetNameTableRestorer(nameTestTable)
+	// дебаг режим
+	configApp.SetLevelLogs(6)
+	//--- End устанавливаем данные конфигурации для теста
 
 	// контекст
 	ctx := context.TODO()
@@ -68,9 +67,11 @@ func TestNewRouterHandler(t *testing.T) {
 	)
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
-	// Создаем конфиг
-	configApp := config.GetAppConfig()
+	// сервис на конфиге
 	serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)
+
+	// хост сервиса
+	hostService := configApp.GetHostShortLink()
 
 	type want struct {
 		statusCode  int
@@ -81,7 +82,7 @@ func TestNewRouterHandler(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		serviceShortLink service.ServiceShortInterface
+		serviceShortLink modelsService.ServiceShortInterface
 		method           string
 		url              string
 		body             string
@@ -94,7 +95,7 @@ func TestNewRouterHandler(t *testing.T) {
 			url:              "/",
 			body:             "https://google.com/",
 			want: want{
-				statusCode:  201,
+				statusCode:  http.StatusCreated,
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
@@ -119,7 +120,7 @@ func TestNewRouterHandler(t *testing.T) {
 			want: want{
 				statusCode:  http.StatusCreated,
 				contentType: "text/plain; charset=utf-8",
-				body:        "/UUUUUU",
+				body:        hostService + "/UUUUUU",
 			},
 		},
 
@@ -179,7 +180,7 @@ func TestNewRouterHandler(t *testing.T) {
 			want: want{
 				statusCode:  http.StatusCreated,
 				contentType: "application/json",
-				body:        "{\"result\":\"http://localhost:8080/UUUUUU\"}",
+				body:        "{\"result\":\"" + hostService + "/UUUUUU\"}",
 			},
 		},
 		{
@@ -191,6 +192,20 @@ func TestNewRouterHandler(t *testing.T) {
 			want: want{
 				statusCode:  http.StatusBadRequest,
 				contentType: "text/plain; charset=utf-8",
+			},
+		},
+		{
+			name:             "get batch short links from JSON request",
+			serviceShortLink: serviceShortLink,
+			method:           http.MethodPost,
+			url:              "/api/shorten/batch",
+			body:             "[{\"correlation_id\":\"7777777\",\"original_url\":\"https://testSite.com\"},{\"correlation_id\":\"11111\",\"original_url\":\"22222\"}]",
+			want: want{
+				statusCode:  http.StatusCreated,
+				contentType: "application/json",
+				// тут один short_url известен, другой не известен,
+				// поэтому указываем начало json для второго элемента, чтобы быть уверенным, что он приходит
+				body: "\"correlation_id\":\"7777777\",\"short_url\":\"" + hostService + "/RRRTTTTT\"},{\"correlation_id\"",
 			},
 		},
 	}
@@ -227,17 +242,15 @@ func TestNewRouterHandler(t *testing.T) {
 				resBody, _ := io.ReadAll(res.Body)
 				res.Body.Close()
 				strBody := string(resBody)
-				logger.GetLogger().Debugf("Получили тело ответа %+v", strBody)
+
 				// получаем и проверяем тело запроса
-				assert.Equal(t, true, strings.Contains(strBody, tt.want.body))
+				statusAssert := assert.Equal(t, true, strings.Contains(strBody, tt.want.body))
+				if !statusAssert {
+					logger.GetLogger().Debugf("Получили тело ответа %+v", strBody)
+				}
 			}
 
-			/*if got := MainPageHandler(tt.args.serviceShortLink); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("MainPageHandler() = %v, want %v", got, tt.want)
-			}*/
-
 			logger.GetLogger().Debugf("### Конец теста: %s", tt.name)
-
 		})
 	}
 }

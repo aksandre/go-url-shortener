@@ -7,6 +7,7 @@ import (
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
+	"strings"
 
 	modelsStorage "go-url-shortener/internal/models/storageshortlink"
 )
@@ -57,15 +58,35 @@ func NewStorageShorts() (storage StorageShortInterface, err error) {
 
 func (store *StorageShortLink) SetData(ctx context.Context, data modelsStorage.DataStorageShortLink) (err error) {
 
+	oldData, err := store.GetShortLinks(ctx, nil)
+	if err != nil {
+		return
+	}
+
+	err = store.ClearStorage(ctx)
+	if err != nil {
+		return
+	}
+
+	err = store.AddBatchShortLinks(ctx, data)
+	if err != nil {
+		store.AddBatchShortLinks(ctx, oldData)
+		return
+	}
+
+	return
+}
+
+// добавление коротких ссылок группой
+func (store *StorageShortLink) AddBatchShortLinks(ctx context.Context, data modelsStorage.DataStorageShortLink) (err error) {
+
 	// открываем транзакцию
 	poolConn := store.dbHandler.GetPool()
 	tx, err := poolConn.BeginTx(ctx, nil)
-	defer func() {
-		// закрываем транзакцию
-		if err == nil {
-			err = tx.Rollback()
-		}
-	}()
+	if err != nil {
+		logger.GetLogger().Error("ошибка: не смогли открыть транзакцию: " + err.Error())
+		return
+	}
 
 	nameTable := store.nameTableData
 	for _, row := range data {
@@ -78,8 +99,12 @@ func (store *StorageShortLink) SetData(ctx context.Context, data modelsStorage.D
 			row.FullURL,
 		)
 		if err != nil {
-			logger.GetLogger().Debugln("ошибка: при выполении запроса " + sqlAdd + ": " + err.Error())
+			logger.GetLogger().Errorln("ошибка: при выполении запроса " + sqlAdd + ": " + err.Error())
 			logger.GetLogger().Debugln("отменяем транзакцию")
+			errRoll := tx.Rollback()
+			if errRoll != nil {
+				logger.GetLogger().Error("ошибка: не смогли сделать Rollback транзакции: " + errRoll.Error())
+			}
 			return err
 		}
 	}
@@ -93,14 +118,22 @@ func (store *StorageShortLink) SetData(ctx context.Context, data modelsStorage.D
 	return
 }
 
-func (store *StorageShortLink) GetShortLinks(ctx context.Context) (shortLinks modelsStorage.DataStorageShortLink, err error) {
-	shortLinksRow, err := store.readAll(ctx)
-	if err != nil {
-		return
+// получаем список данных коротких ссылок по фильтру
+func (store *StorageShortLink) GetShortLinks(ctx context.Context, options *modelsStorage.OptionsQuery) (shortLinks modelsStorage.DataStorageShortLink, err error) {
+
+	var shortLinksRows []modelsStorage.RowStorageShortLink
+
+	// если передан фильтр по полным ссылкам
+	if options != nil {
+		shortLinksRows, err = store.readFilter(ctx, options)
+	} else {
+		shortLinksRows, err = store.readAll(ctx)
 	}
-	lenRows := len(shortLinksRow)
+
+	// колличество результатов
+	lenRows := len(shortLinksRows)
 	shortLinks = make(modelsStorage.DataStorageShortLink, lenRows)
-	for _, row := range shortLinksRow {
+	for _, row := range shortLinksRows {
 
 		shortLink := row.ShortLink
 		shortLinks[shortLink] = modelsStorage.RowStorageShortLink{
@@ -128,7 +161,7 @@ func (store *StorageShortLink) GetCountLink(ctx context.Context) (count int, err
 	}()
 
 	if err != nil {
-		logger.GetLogger().Debugln("ошибка: при выполении запроса " + sqlSelectQuery + ": " + err.Error())
+		logger.GetLogger().Errorln("ошибка: при выполении запроса " + sqlSelectQuery + ": " + err.Error())
 		return
 	}
 
@@ -154,7 +187,7 @@ func (store *StorageShortLink) AddShortLinkForURL(ctx context.Context, fullURL, 
 	poolConn := store.dbHandler.GetPool()
 	_, err = poolConn.ExecContext(ctx, sqlAddRow, fullURL, shortLink)
 	if err != nil {
-		logger.GetLogger().Debugln("ошибка: при выполении запроса " + sqlAddRow + ": " + err.Error())
+		logger.GetLogger().Errorln("ошибка: при выполении запроса " + sqlAddRow + ": " + err.Error())
 	}
 
 	return
@@ -166,7 +199,7 @@ func (store *StorageShortLink) GetShortLinkByURL(ctx context.Context, fullURL st
 	sqlSelectRow := "SELECT ID, FULL_URL, SHORT_LINK FROM " + nameTable + " WHERE FULL_URL=$1 LIMIT 1"
 	allRows, err := store.readRows(ctx, sqlSelectRow, fullURL)
 	if err != nil {
-		logger.GetLogger().Debugln("ошибка: при выполении запроса " + sqlSelectRow + ": " + err.Error())
+		logger.GetLogger().Errorln("ошибка: при выполении запроса " + sqlSelectRow + ": " + err.Error())
 		return
 	}
 
@@ -184,7 +217,7 @@ func (store *StorageShortLink) GetFullLinkByShort(ctx context.Context, shortLink
 	sqlSelectRow := "SELECT ID, FULL_URL, SHORT_LINK FROM " + nameTable + " WHERE SHORT_LINK=$1 LIMIT 1"
 	allRows, err := store.readRows(ctx, sqlSelectRow, shortLink)
 	if err != nil {
-		logger.GetLogger().Debugln("ошибка: при выполении запроса " + sqlSelectRow + ": " + err.Error())
+		logger.GetLogger().Errorln("ошибка: при выполении запроса " + sqlSelectRow + ": " + err.Error())
 		return
 	}
 
@@ -217,7 +250,7 @@ func (store *StorageShortLink) readRows(ctx context.Context, sqlSelectQuery stri
 	}()
 
 	if err != nil {
-		logger.GetLogger().Debugln("ошибка: при выполении запроса " + sqlSelectQuery + ": " + err.Error())
+		logger.GetLogger().Errorf("ошибка: при выполении запроса " + sqlSelectQuery + ": " + err.Error())
 		return
 	}
 
@@ -253,7 +286,36 @@ func (store *StorageShortLink) readAll(ctx context.Context) (allRows []modelsSto
 	sqlSelectRows := "SELECT ID, FULL_URL, SHORT_LINK FROM " + nameTable + " ORDER BY ID ASC"
 	allRows, err = store.readRows(ctx, sqlSelectRows)
 	if err != nil {
-		logger.GetLogger().Debugln("ошибка: при выполении запроса " + sqlSelectRows + ": " + err.Error())
+		logger.GetLogger().Errorln("ошибка: при выполении запроса " + sqlSelectRows + ": " + err.Error())
+	}
+	return
+}
+
+// Прочитать все строки в таблице и вернуть результат в виде слайса
+func (store *StorageShortLink) readFilter(ctx context.Context, options *modelsStorage.OptionsQuery) (allRows []modelsStorage.RowStorageShortLink, err error) {
+
+	nameTable := store.nameTableData
+
+	if options != nil {
+		listFullURL := options.Filter.ListFullURL
+		countURLs := len(listFullURL)
+		if countURLs > 0 {
+
+			sliceValueAny := make([]string, countURLs)
+			for key, url := range listFullURL {
+				sliceValueAny[key] = "\"" + url + "\""
+			}
+			strValueAny := "{" + strings.Join(sliceValueAny, ",") + "}"
+
+			sqlSelectRows := "SELECT ID, FULL_URL, SHORT_LINK FROM " + nameTable + " "
+			sqlSelectRows += "WHERE FULL_URL = ANY ($1) ORDER BY ID ASC"
+
+			allRows, err = store.readRows(ctx, sqlSelectRows, strValueAny)
+			//logger.GetLogger().Debugf("результат запроса: %+v", allRows)
+			if err != nil {
+				logger.GetLogger().Errorln("ошибка: при выполении запроса " + sqlSelectRows + ": " + err.Error())
+			}
+		}
 	}
 	return
 }
@@ -265,7 +327,7 @@ func (store *StorageShortLink) ClearStorage(ctx context.Context) (err error) {
 	poolConn := store.dbHandler.GetPool()
 	_, err = poolConn.ExecContext(ctx, sqlTruncate)
 	if err != nil {
-		logger.GetLogger().Debugln("ошибка: при выполении запроса " + sqlTruncate + ": " + err.Error())
+		logger.GetLogger().Errorln("ошибка: при выполении запроса " + sqlTruncate + ": " + err.Error())
 	}
 	return
 }
@@ -283,6 +345,9 @@ func createShortLinkTable(tableName string) (err error) {
 		"	SHORT_LINK varchar(255)," +
 		"   CREATED TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
 		") "
+
+		//-- создание индекса для таблицы videos по полю video_id
+		// CREATE INDEX video_id ON videos (video_id)
 
 	_, err = poolConn.Exec(sqlCreateTable)
 	if err != nil {

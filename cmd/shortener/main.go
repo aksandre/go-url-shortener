@@ -60,12 +60,20 @@ xhr.setRequestHeader('Content-Type', 'application/json');
 //xhr.onreadystatechange = ...;
 xhr.send(body);
 
+
+var xhr = new XMLHttpRequest();
+var body = '[{"correlation_id":"123456","original_url":"https://123456.com"},{"correlation_id":"456789","original_url":"https://456789.com"}]'
+xhr.open("POST", '/api/shorten/batch', true);
+xhr.setRequestHeader('Content-Type', 'application/json');
+//xhr.onreadystatechange = ...;
+xhr.send(body);
+
 var xhr = new XMLHttpRequest();
 xhr.open("GET", '/MIy3I6N4', true);
 */
 
-// SET SERVER_ADDRESS=localhost:8045
-// SET BASE_URL=https://localhost:8041/hhhh/
+// SET SERVER_ADDRESS=localhost:8080
+// SET BASE_URL=http://localhost:8080
 // SET FILE_STORAGE_PATH=C:\Users\LENOVO\testLog.log
 
 // SET DATABASE_DSN=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable
@@ -73,7 +81,7 @@ xhr.open("GET", '/MIy3I6N4', true);
 // SET LEVEL_LOGS_GOLANG=6
 
 // статический анализатор
-// для винды выполянть в каждйо отдельной папке
+// для винды выполянть в каждой отдельной папке
 // go vet -vettool=C:\GoProjects\golang\project\go-url-shortener\statictest.exe
 
 // генерация модели
@@ -98,3 +106,4 @@ xhr.open("GET", '/MIy3I6N4', true);
 
 // shortenertest -test.v -test.run=^TestIteration10$ -source-path=. -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable
 // shortenertest -test.v -test.run=^TestIteration11$ -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable
+// shortenertest -test.v -test.run=^TestIteration12$ -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable

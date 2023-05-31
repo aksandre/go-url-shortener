@@ -8,6 +8,7 @@ import (
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
+	modelsService "go-url-shortener/internal/models/service"
 	modelsStorage "go-url-shortener/internal/models/storageshortlink"
 	storageShort "go-url-shortener/internal/storage/storageshortlink"
 	"io"
@@ -39,19 +40,20 @@ func compressText(text string) []byte {
 // тесты для проверки сжатия
 func TestNewRouterCompressHandler(t *testing.T) {
 
-	// устанавливаем данные конфигурации для теста
-	func() {
-		// имя временного файла с хранилищем
-		pathTempFile := os.TempDir() + "/storage/testStorage.txt"
-		// имя тестовой таблицы
-		nameTestTable := "test_table_restore"
-		config := config.GetAppConfig()
-		config.SetFileStoragePath(pathTempFile)
-		config.SetNameTableRestorer(nameTestTable)
+	//--- Start устанавливаем данные конфигурации для теста
+	// имя тестовой таблицы
+	nameTestTable := "test_table_restore"
+	// имя временного файла с хранилищем
+	pathTempFile := os.TempDir() + "/storage/testStorage.json"
+	configApp := config.GetAppConfig()
+	configApp.SetFileStoragePath(pathTempFile)
+	configApp.SetNameTableRestorer(nameTestTable)
+	// дебаг режим
+	configApp.SetLevelLogs(6)
+	//--- End устанавливаем данные конфигурации для теста
 
-		// дебаг режим
-		config.SetLevelLogs(6)
-	}()
+	// печатаем расположение лога после инициализации конфига
+	logger.GetLogger().Debugf("Путь до файла хранилища ссылок: %+v", pathTempFile)
 
 	// контекст
 	ctx := context.TODO()
@@ -85,8 +87,7 @@ func TestNewRouterCompressHandler(t *testing.T) {
 	)
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
-	// Создаем конфиг
-	configApp := config.GetAppConfig()
+	// инициализируем сервис на базе конфига
 	serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)
 
 	type want struct {
@@ -100,7 +101,7 @@ func TestNewRouterCompressHandler(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		serviceShortLink service.ServiceShortInterface
+		serviceShortLink modelsService.ServiceShortInterface
 		headers          http.Header
 		method           string
 		url              string

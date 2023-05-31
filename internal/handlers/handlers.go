@@ -1,14 +1,16 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/logger"
 	modelsRequests "go-url-shortener/internal/models/requests"
 	modelsResponses "go-url-shortener/internal/models/responses"
+	modelsService "go-url-shortener/internal/models/service"
 	"io"
+	"strconv"
 
 	middlewareCompress "go-url-shortener/internal/middlewares/compress"
 	middlewareLogging "go-url-shortener/internal/middlewares/logging"
@@ -24,7 +26,7 @@ import (
 
 // Тип обрабочика маршрутов
 type dataHandler struct {
-	service service.ServiceShortInterface
+	service modelsService.ServiceShortInterface
 }
 
 // получаем список ссылок, которые генерировал пользователь
@@ -45,7 +47,7 @@ func (dh dataHandler) getUserListShortLinksByJSON(res http.ResponseWriter, req *
 	if err != nil {
 		err = fmt.Errorf("ошибка поулучения списка коротких ссылок: %w", err)
 		strError := err.Error()
-		logger.GetLogger().Debugf("%s", strError)
+		logger.GetLogger().Errorf("%s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -79,7 +81,7 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 	if err := json.NewDecoder(dataBody).Decode(&dataRequest); err != nil {
 		err = fmt.Errorf("ошибка сериализации тела запроса: %w", err)
 		strError := err.Error()
-		logger.GetLogger().Debugf("%s", strError)
+		logger.GetLogger().Errorf("%s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -95,7 +97,7 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 
 		strError := "Ошибка создания короткой ссылки: "
 		strError += "В запросе не указан URL, для которого надо сгенерировать короткую ссылку"
-		logger.GetLogger().Debugf("%s", strError)
+		logger.GetLogger().Errorf("%s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -112,7 +114,7 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 	if err != nil {
 		err = fmt.Errorf("ошибка создания короткой ссылки : %w", err)
 		strError := err.Error()
-		logger.GetLogger().Debugf("%s", strError)
+		logger.GetLogger().Errorf("%s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -122,7 +124,10 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 	} else {
 
 		// добавляем ссылку в данные пользователя
-		cookiesUserData.AddFullURLToUser(urlFull, res, req)
+		errAdd := cookiesUserData.AddListFullURLToUser([]string{urlFull}, res, req)
+		if errAdd != nil {
+			logger.GetLogger().Errorf("Ошибка сохранения у пользователя списка запрошенных коротких ссылок %s :", errAdd.Error())
+		}
 
 		// данные ответа
 		dataResponse := modelsResponses.ResponseServiceLink{
@@ -138,15 +143,134 @@ func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Re
 
 }
 
+// Генерация группы коротких ссылок по Json запросу
+func (dh dataHandler) getBatchServiceLinkByJSON(res http.ResponseWriter, req *http.Request) {
+
+	// получаем тело из запроса
+	dataBody := req.Body
+
+	// данные запроса
+	dataBatchRequest := modelsRequests.RequestBatchServiceLinks{}
+	jsonDecoder := json.NewDecoder(dataBody)
+	err := jsonDecoder.Decode(&dataBatchRequest)
+	if err != nil {
+		err = fmt.Errorf("ошибка сериализации тела запроса: %w", err)
+		strError := err.Error()
+		logger.GetLogger().Errorf("%s", strError)
+
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(strError))
+		return
+	}
+
+	debugInput := []string{}
+	// слайс ссылок
+	listFullURLs := []string{}
+	// соответствие id коррелирования и ссылки на сторонний ресурс
+	correlationMap := map[string]string{}
+	for _, rowBatch := range dataBatchRequest {
+		idCorrelation := rowBatch.CorrelationID
+		if idCorrelation == "" {
+			debugInput = append(debugInput, "пустой correlation_id")
+			continue
+		}
+
+		urlFull := rowBatch.OriginalURL
+		urlFull = strings.TrimSpace(urlFull)
+		if urlFull != "" {
+			correlationMap[idCorrelation] = urlFull
+			listFullURLs = append(listFullURLs, urlFull)
+		} else {
+			debugInput = append(debugInput, "у correlation_id = "+idCorrelation+" пустой original_url")
+		}
+	}
+
+	if len(dataBatchRequest) == 0 || len(correlationMap) == 0 {
+		strError := "Ошибка создания группы коротких ссылок: "
+		strError += "В запросе все данные пустые"
+		logger.GetLogger().Errorf("%s", strError)
+
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(strError))
+		return
+	}
+
+	if len(debugInput) > 0 {
+		strDebugInput := "Замечания у входных данных при создании группы коротких ссылок: \n"
+		for key, value := range debugInput {
+			strDebugInput += strconv.Itoa(key) + ") " + value + "\n; "
+		}
+		logger.GetLogger().Debugf("%s", strDebugInput)
+	}
+
+	ctx := context.TODO()
+
+	batchLinks, err := dh.service.GetBatchShortLink(ctx, listFullURLs)
+	logger.GetLogger().Debugf("Сформировали для группы короткие ссылки: %+v", batchLinks)
+
+	if err != nil {
+		err = fmt.Errorf("ошибка создания группы коротких ссылок : %w", err)
+		strError := err.Error()
+		logger.GetLogger().Errorf("%s", strError)
+
+		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(strError))
+		return
+
+	} else {
+
+		// добавляем ссылки в данные пользователя
+		listFullURLs := []string{}
+		for urlFull := range batchLinks {
+			listFullURLs = append(listFullURLs, urlFull)
+		}
+		cookiesUserData.AddListFullURLToUser(listFullURLs, res, req)
+		errAdd := cookiesUserData.AddListFullURLToUser(listFullURLs, res, req)
+		if errAdd != nil {
+			logger.GetLogger().Errorf("Ошибка сохранения у пользователя списка запрошенных коротких ссылок %s :", errAdd.Error())
+		}
+
+		// данные ответа
+		dataResponse := make(modelsResponses.ResponseBatchServiceLinks, len(correlationMap))
+		i := 0
+		for idCorrelation, urlFull := range correlationMap {
+			shortLink, ok := batchLinks[urlFull]
+			if ok {
+				dataResponse[i] = modelsResponses.RowBatchServiceLink{
+					CorrelationID: idCorrelation,
+					ShortURL:      shortLink,
+				}
+				i++
+			}
+		}
+
+		buf := bytes.Buffer{}
+		jsonEncoder := json.NewEncoder(&buf)
+		jsonEncoder.Encode(dataResponse)
+
+		bytesResult := buf.Bytes()
+
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusCreated)
+
+		res.Write(bytesResult)
+	}
+
+}
+
 // Генерация короткой ссылки по Url в текстовом виде
 func (dh dataHandler) getServiceLinkByURL(res http.ResponseWriter, req *http.Request) {
+
 	// получаем тело из запроса и проводим его к строке
 	dataBody := req.Body
 	result, err := io.ReadAll(dataBody)
 	dataBody.Close()
 	if err != nil {
 		strError := err.Error()
-		logger.GetLogger().Debugf("Ошибка чтения тела запроса: %s", strError)
+		logger.GetLogger().Errorf("Ошибка чтения тела запроса: %s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -163,7 +287,7 @@ func (dh dataHandler) getServiceLinkByURL(res http.ResponseWriter, req *http.Req
 
 	if err != nil {
 		strError := err.Error()
-		logger.GetLogger().Debugf("Ошибка создания короткой ссылки : %s", strError)
+		logger.GetLogger().Errorf("Ошибка создания короткой ссылки : %s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -172,7 +296,10 @@ func (dh dataHandler) getServiceLinkByURL(res http.ResponseWriter, req *http.Req
 	} else {
 
 		// добавляем ссылку в данные пользователя
-		cookiesUserData.AddFullURLToUser(urlFull, res, req)
+		errAdd := cookiesUserData.AddListFullURLToUser([]string{urlFull}, res, req)
+		if errAdd != nil {
+			logger.GetLogger().Errorf("Ошибка сохранения у пользователя списка запрошенных коротких ссылок %s :", errAdd.Error())
+		}
 
 		lenResult := len(serviceLink)
 		strLenResult := fmt.Sprintf("%d", lenResult)
@@ -198,7 +325,7 @@ func (dh dataHandler) getFullLinkByShort(res http.ResponseWriter, req *http.Requ
 
 	if err != nil {
 		strErr := err.Error()
-		logger.GetLogger().Debugf("Ошибка получения полной ссылки: %s", strErr)
+		logger.GetLogger().Errorf("Ошибка получения полной ссылки: %s", strErr)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusBadRequest)
@@ -221,7 +348,7 @@ func (dh dataHandler) getStatusPingDB(res http.ResponseWriter, req *http.Request
 	if err != nil {
 		err = fmt.Errorf("ошибка: пинг БД завершился ошибкой: %w", err)
 		strError := err.Error()
-		logger.GetLogger().Debugf("%s", strError)
+		logger.GetLogger().Errorf("%s", strError)
 
 		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		res.WriteHeader(http.StatusInternalServerError)
@@ -233,7 +360,7 @@ func (dh dataHandler) getStatusPingDB(res http.ResponseWriter, req *http.Request
 }
 
 // создание обработчика запросов
-func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handler {
+func NewRouterHandler(serviceShortLink modelsService.ServiceShortInterface) http.Handler {
 
 	// создаем структуру с данными о сервисе
 	var dataHandler = dataHandler{
@@ -245,6 +372,7 @@ func NewRouterHandler(serviceShortLink service.ServiceShortInterface) http.Handl
 	router.Get("/{shortLink}", dataHandler.getFullLinkByShort)
 	router.Get("/api/user/urls", dataHandler.getUserListShortLinksByJSON)
 	router.Post("/api/shorten", dataHandler.getServiceLinkByJSON)
+	router.Post("/api/shorten/batch", dataHandler.getBatchServiceLinkByJSON)
 	router.Get("/ping", dataHandler.getStatusPingDB)
 
 	// когда метод не найден, то 400

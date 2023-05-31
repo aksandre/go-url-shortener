@@ -6,6 +6,7 @@ import (
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
 	"go-url-shortener/internal/logger"
+	modelsStorage "go-url-shortener/internal/models/storageshortlink"
 	storagerestorer "go-url-shortener/internal/storage/storageshortlink/storagerestorer"
 	"os"
 	"strings"
@@ -21,22 +22,20 @@ import (
 // Это тесты с реальной отправкой данных на сервер
 func TestFileRestorerStorageHandlerServer(t *testing.T) {
 
+	//--- Start устанавливаем данные конфигурации для теста
+	// имя тестовой таблицы
+	nameTestTable := "test_table_restore"
 	// имя временного файла с хранилищем
-	pathTempFile := os.TempDir() + "/storage/testStorage.txt"
+	pathTempFile := os.TempDir() + "/storage/testStorage.json"
+	configApp := config.GetAppConfig()
+	configApp.SetFileStoragePath(pathTempFile)
+	configApp.SetNameTableRestorer(nameTestTable)
+	// дебаг режим
+	configApp.SetLevelLogs(6)
+	//--- End устанавливаем данные конфигурации для теста
+
+	// печатаем расположение лога после инициализации конфига
 	logger.GetLogger().Debugf("Путь до файла хранилища ссылок: %+v", pathTempFile)
-
-	// устанавливаем данные конфигурации для теста
-	func() {
-
-		// имя тестовой таблицы
-		nameTestTable := "test_table_restore"
-		config := config.GetAppConfig()
-		config.SetFileStoragePath(pathTempFile)
-		config.SetNameTableRestorer(nameTestTable)
-
-		// дебаг режим
-		config.SetLevelLogs(6)
-	}()
 
 	// контекст
 	ctx := context.TODO()
@@ -72,7 +71,7 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 	// создаем пустое хранилище
 	storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
 
-	testFullURL1 := "https://dsdsdsdds.com"
+	testFullURL1 := "https://dsdsdsdds_W.com"
 	testShortLink1 := "UUUUUUUU"
 	storageShortLink.AddShortLinkForURL(ctx, testFullURL1, testShortLink1)
 
@@ -80,21 +79,125 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 	testShortLink2 := "RRRTTTTT"
 	storageShortLink.AddShortLinkForURL(ctx, testFullURL2, testShortLink2)
 
+	testFullURL3 := "https://testSite222.com"
+	testShortLink3 := "RRRTTTTT222"
+	storageShortLink.AddShortLinkForURL(ctx, testFullURL3, testShortLink3)
+
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
 	nameMyTest2 := "Check count link after restore"
-	t.Run(nameMyTest, func(t *testing.T) {
+	t.Run(nameMyTest2, func(t *testing.T) {
 
 		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest2)
 
 		// новое хранилище, при инициализации должно заполниться
 		storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
-		// вверху добавили две ссылки, проверяем, что в хранилище две ссылки
+		// вверху добавили две ссылки, проверяем, что в хранилище три ссылки
 		countLinks, _ := storageShortLink.GetCountLink(ctx)
-		assert.Equal(t, countLinks, 2)
+		data, _ := storageShortLink.GetShortLinks(ctx, nil)
+		logger.GetLogger().Debugf("Данные хранилища: %+v", data)
+		assert.Equal(t, countLinks, 3)
 
-		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest)
+		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest2)
 
+	})
+
+	nameMyTest3 := "get short link with filter"
+	t.Run(nameMyTest3, func(t *testing.T) {
+
+		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest3)
+
+		// новое хранилище, при инициализации должно заполниться
+		storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
+
+		// запрашиваем 3 ссылки
+		// должны 2 получить, одна не существующая
+		testFullURLUnknow := "https://unknow.com"
+		options := &modelsStorage.OptionsQuery{
+			Filter: modelsStorage.FilterOptionsQuery{
+				ListFullURL: []string{testFullURL1, testFullURL3, testFullURLUnknow},
+			},
+		}
+
+		rows, _ := storageShortLink.GetShortLinks(ctx, options)
+		logger.GetLogger().Debugf("Полученные данные после фильтрации: %+v", rows)
+
+		lenRows := len(rows)
+		assert.Equal(t, 2, lenRows)
+
+		_, ok1 := rows[testShortLink1]
+		assert.Equal(t, true, ok1)
+		assert.Equal(t, testFullURL1, rows[testShortLink1].FullURL)
+
+		_, ok2 := rows[testShortLink3]
+		assert.Equal(t, true, ok2)
+		assert.Equal(t, testFullURL3, rows[testShortLink3].FullURL)
+
+		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest3)
+	})
+
+	nameMyTest4 := "add batch shorts links"
+	t.Run(nameMyTest4, func(t *testing.T) {
+
+		testFullURL1 := "https://test1.com"
+		testShortLink1 := "test1"
+
+		testFullURL2 := "https://test2.com"
+		testShortLink2 := "test2"
+
+		testFullURL3 := "https://test3.com"
+		testShortLink3 := "test3"
+
+		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest4)
+
+		// новое хранилище, при инициализации должно заполниться
+		storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
+
+		listBatch := modelsStorage.DataStorageShortLink{
+			testShortLink1: modelsStorage.RowStorageShortLink{
+				ShortLink: testShortLink1,
+				FullURL:   testFullURL1,
+			},
+			testShortLink2: modelsStorage.RowStorageShortLink{
+				ShortLink: testShortLink2,
+				FullURL:   testFullURL2,
+			},
+			testShortLink3: modelsStorage.RowStorageShortLink{
+				ShortLink: testShortLink3,
+				FullURL:   testFullURL3,
+			},
+		}
+
+		// добавим группу коротких ссылок
+		err := storageShortLink.AddBatchShortLinks(ctx, listBatch)
+		assert.NoError(t, err)
+
+		if err == nil {
+
+			// запрашиваем 3 ссылки
+			options := &modelsStorage.OptionsQuery{
+				Filter: modelsStorage.FilterOptionsQuery{
+					ListFullURL: []string{testFullURL1, testFullURL2, testFullURL3},
+				},
+			}
+			rows, _ := storageShortLink.GetShortLinks(ctx, options)
+			logger.GetLogger().Debugf("Полученные данные после фильтрации: %+v", rows)
+
+			lenRows := len(rows)
+			assert.Equal(t, 3, lenRows)
+
+			if lenRows > 0 {
+				_, ok1 := rows[testShortLink1]
+				assert.Equal(t, true, ok1)
+				assert.Equal(t, testFullURL1, rows[testShortLink1].FullURL)
+
+				_, ok2 := rows[testShortLink3]
+				assert.Equal(t, true, ok2)
+				assert.Equal(t, testFullURL3, rows[testShortLink3].FullURL)
+			}
+		}
+
+		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest4)
 	})
 
 	type want struct {

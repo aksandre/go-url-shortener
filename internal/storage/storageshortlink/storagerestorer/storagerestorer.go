@@ -85,13 +85,73 @@ func NewStorageShortsFromDB(nameTable string) (StorageShortInterface, error) {
 	return storage, nil
 }
 
+// установка всех данных хранилища
 func (store *StorageShortLink) SetData(ctx context.Context, data modelsStorage.DataStorageShortLink) (err error) {
-	store.Data = data
+
+	// запомнили старые данные
+	oldData := store.Data
+
+	err = store.ClearStorage(ctx)
+	if err != nil {
+		return
+	}
+
+	err = store.AddBatchShortLinks(ctx, data)
+	if err != nil {
+		store.AddBatchShortLinks(ctx, oldData)
+	}
 	return
 }
 
-func (store *StorageShortLink) GetShortLinks(ctx context.Context) (shortLinks modelsStorage.DataStorageShortLink, err error) {
-	return store.Data, nil
+// добавление коротких ссылок группой
+func (store *StorageShortLink) AddBatchShortLinks(ctx context.Context, data modelsStorage.DataStorageShortLink) (err error) {
+
+	for _, row := range data {
+		shortLink := row.ShortLink
+		fullURL := row.FullURL
+		err = store.AddShortLinkForURL(ctx, fullURL, shortLink)
+		if err != nil {
+			err = errors.New("ошибка: групповая установка данных в хранилище была остановлена, произошла ошибка: " + err.Error())
+			break
+		}
+	}
+	return
+}
+
+// получаем список данных коротких ссылок по фильтру
+func (store *StorageShortLink) GetShortLinks(ctx context.Context, options *modelsStorage.OptionsQuery) (shortLinks modelsStorage.DataStorageShortLink, err error) {
+
+	// если передан фильтр по полным ссылкам
+	if options != nil {
+
+		shortLinks = modelsStorage.DataStorageShortLink{}
+		if len(options.Filter.ListFullURL) > 0 {
+
+			tempData := make(map[string]string, 0)
+			for _, fullURL := range options.Filter.ListFullURL {
+				tempData[fullURL] = fullURL
+			}
+
+			for _, dataRow := range store.Data {
+				fullURL := dataRow.FullURL
+				if _, ok := tempData[fullURL]; ok {
+					shortLink := dataRow.ShortLink
+					shortLinks[shortLink] = modelsStorage.RowStorageShortLink{
+						ShortLink: shortLink,
+						FullURL:   dataRow.FullURL,
+						UUID:      dataRow.UUID,
+					}
+				}
+
+			}
+		}
+
+		return shortLinks, nil
+
+	} else {
+		return store.Data, nil
+	}
+
 }
 
 func (store *StorageShortLink) GetCountLink(ctx context.Context) (count int, err error) {
@@ -104,19 +164,26 @@ func (store *StorageShortLink) AddShortLinkForURL(ctx context.Context, fullURL, 
 	orderLink := len(store.Data) + 1
 	uuid := fmt.Sprintf("%d", orderLink)
 
-	store.Data[shortLink] = modelsStorage.RowStorageShortLink{
-		ShortLink: shortLink,
-		FullURL:   fullURL,
-		UUID:      uuid,
-	}
+	// важно
+	// если не отследить, что в хранилище уже есть запись с указанной короткой ссылкой,
+	// то данные в памяти просто обновятся с существующим ключом, а в рестороре добавится новая запись
+	// данные перестанут соответсвовать в памяти и в рестороре
+	if _, ok := store.Data[shortLink]; !ok {
 
-	// делаем запись в файл с хранилищем данных
-	rowDataRestorer := restorer.RowDataRestorer{
-		ShortLink: shortLink,
-		FullURL:   fullURL,
-		UUID:      uuid,
+		store.Data[shortLink] = modelsStorage.RowStorageShortLink{
+			ShortLink: shortLink,
+			FullURL:   fullURL,
+			UUID:      uuid,
+		}
+
+		// делаем запись в ресторер
+		rowDataRestorer := restorer.RowDataRestorer{
+			ShortLink: shortLink,
+			FullURL:   fullURL,
+			UUID:      uuid,
+		}
+		store.Restorer.WriteRow(rowDataRestorer)
 	}
-	store.Restorer.WriteRow(rowDataRestorer)
 
 	return
 }
@@ -149,11 +216,16 @@ func (store *StorageShortLink) SetRestorer(restorer restorer.Restorer) (err erro
 	return
 }
 
+func (store *StorageShortLink) SetMemoryData(ctx context.Context, data modelsStorage.DataStorageShortLink) (err error) {
+	store.Data = data
+	return
+}
+
 // Удаление данных из памяти
 // Данные Ресторера не трогаем
 func (store *StorageShortLink) clearMemoryData(ctx context.Context) (err error) {
 	emptyData := make(modelsStorage.DataStorageShortLink)
-	store.SetData(ctx, emptyData)
+	store.SetMemoryData(ctx, emptyData)
 	return
 }
 
@@ -184,7 +256,7 @@ func (store *StorageShortLink) Restore(ctx context.Context) (err error) {
 			}
 		}
 
-		store.SetData(ctx, dataStorage)
+		store.SetMemoryData(ctx, dataStorage)
 	}
 	return
 }
@@ -201,9 +273,9 @@ func (store *StorageShortLink) Init(ctx context.Context) (err error) {
 
 // Удаляем данные хранилища
 func (store *StorageShortLink) ClearStorage(ctx context.Context) (err error) {
-	err = store.clearMemoryData(ctx)
+	err = store.Restorer.ClearRows()
 	if err == nil {
-		err = store.Restorer.ClearRows()
+		err = store.clearMemoryData(ctx)
 	}
 
 	return err

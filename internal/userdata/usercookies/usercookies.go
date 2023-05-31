@@ -55,23 +55,26 @@ func SetCookiesUserData(userData UserDataCookies, res http.ResponseWriter) {
 	http.SetCookie(res, cookie)
 }
 
-// Запоминаем ссылку, которую запрашивал пользователь
-func AddFullURLToUser(fullURL string, res http.ResponseWriter, req *http.Request) (err error) {
+// Запоминаем ссылки, которые запрашивал пользователь
+func AddListFullURLToUser(listFullURL []string, res http.ResponseWriter, req *http.Request) (err error) {
 
 	userData, err := GetCookiesUserData(req)
-	logger.GetLogger().Debugf("Ссылки текущего пользователя до добавления %+v", userData)
+
 	if err != nil {
 		return err
 	}
 
-	isNewLink := true
-	for _, value := range userData.ListFullURL {
-		if value == fullURL {
-			isNewLink = false
+	for _, fullURL := range listFullURL {
+		isNewLink := true
+		for _, value := range userData.ListFullURL {
+			if value == fullURL {
+				isNewLink = false
+			}
 		}
-	}
-	if isNewLink {
-		userData.ListFullURL = append(userData.ListFullURL, fullURL)
+
+		if isNewLink {
+			userData.ListFullURL = append(userData.ListFullURL, fullURL)
+		}
 	}
 
 	SetCookiesUserData(userData, res)
