@@ -338,6 +338,13 @@ func createShortLinkTable(tableName string) (err error) {
 	dbHandler := dbconn.GetDBHandler()
 	poolConn := dbHandler.GetPool()
 
+	ctx := context.TODO()
+	tx, err := poolConn.BeginTx(ctx, nil)
+	if err != nil {
+		logger.GetLogger().Error("ошибка: не смогли открыть транзакцию: " + err.Error())
+		return
+	}
+
 	sqlCreateTable := "" +
 		"create table IF NOT EXISTS " + tableName + " (" +
 		"	ID SERIAL PRIMARY KEY," +
@@ -345,14 +352,33 @@ func createShortLinkTable(tableName string) (err error) {
 		"	SHORT_LINK varchar(255)," +
 		"   CREATED TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
 		") "
-
-		//-- создание индекса для таблицы videos по полю video_id
-		// CREATE INDEX video_id ON videos (video_id)
-
-	_, err = poolConn.Exec(sqlCreateTable)
+	_, err = tx.ExecContext(ctx, sqlCreateTable)
 	if err != nil {
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			logger.GetLogger().Error("ошибка: не смогли сделать Rollback транзакции: " + errRoll.Error())
+		}
+
 		err = fmt.Errorf("ошибка: не смогли создать таблицу для хранения коротких ссылок: %w", err)
 		return
+	}
+
+	sqlCreateIndex := "CREATE INDEX IF NOT EXISTS FULL_URL_index_" + tableName + " ON " + tableName + " (FULL_URL)"
+	_, err = tx.ExecContext(ctx, sqlCreateIndex)
+	if err != nil {
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			logger.GetLogger().Error("ошибка: не смогли сделать Rollback транзакции: " + errRoll.Error())
+		}
+
+		err = fmt.Errorf("ошибка: не смогли создать индекс у поля FULL_URL: %w", err)
+		return
+	}
+
+	// завершаем транзакцию
+	err = tx.Commit()
+	if err != nil {
+		logger.GetLogger().Error("ошибка: не смогли сделать commit транзакции: " + err.Error())
 	}
 
 	return

@@ -25,7 +25,7 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 
 	//--- Start устанавливаем данные конфигурации для теста
 	// имя тестовой таблицы
-	nameTestTable := "test_table_restore"
+	nameTestTable := "test_table_restore_3"
 	// имя временного файла с хранилищем
 	pathTempFile := os.TempDir() + "/storage/testStorage.json"
 	configApp := config.GetAppConfig()
