@@ -108,7 +108,50 @@ func (service *ServiceShortLink) getShortLinkWithHost(shortLink string) (shortLi
 	return
 }
 
-// Получаем короткую ссылку с хостом по Url-адресу
+// Добавляем новый Url-адресу и получаем его короткую ссылку
+// Если в хранилище уже есть такой URL, то ошибка
+func (service *ServiceShortLink) AddNewFullURL(ctx context.Context, fullURL string) (serviceLink string, err error) {
+
+	shortLink, err := service.addNewFullURL(ctx, fullURL)
+	// если это ошибка дублирования записи, то поулчаем существующую короткую ссылку
+	isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
+	if err == nil || isErrExist {
+		if shortLink != "" {
+			serviceLink, _ = service.getShortLinkWithHost(shortLink)
+		}
+	}
+
+	return
+}
+
+func (service *ServiceShortLink) addNewFullURL(ctx context.Context, fullURL string) (shortLink string, err error) {
+
+	//генерируем новую ссылку
+	lengthShort := service.lengthShortLink
+	shortLink = service.getRandString(lengthShort)
+	logger.GetLogger().Debugf("Сформировали новый код  %s", shortLink)
+
+	// добавим короткую ссылку в хранилище
+	err = service.storage.AddShortLinkForURL(ctx, fullURL, shortLink)
+	if err != nil {
+		// если это ошибка дублирования записи, то поулчаем существующую короткую ссылку
+		isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
+		if isErrExist {
+			shortLinkExist, errGet := service.storage.GetShortLinkByURL(ctx, fullURL)
+			if errGet != nil {
+				err = errGet
+			} else {
+				// присваиваем существующую ссыку в переменную результата
+				shortLink = shortLinkExist
+			}
+		}
+	}
+
+	return
+}
+
+// Получаем короткую ссылку по Url-адресу
+// Если ссылки не существует, то без ошибок добавляем ее
 func (service *ServiceShortLink) GetServiceLinkByURL(ctx context.Context, fullURL string) (serviceLink string, err error) {
 
 	shortLink, err := service.getShortLinkByURL(ctx, fullURL)
@@ -121,7 +164,7 @@ func (service *ServiceShortLink) GetServiceLinkByURL(ctx context.Context, fullUR
 	return
 }
 
-// Генерируем короткую ссылку по Url-адресу
+// Получаем короткую ссылку по Url-адресу
 func (service *ServiceShortLink) getShortLinkByURL(ctx context.Context, fullURL string) (shortLink string, err error) {
 
 	shortLink, err = service.storage.GetShortLinkByURL(ctx, fullURL)

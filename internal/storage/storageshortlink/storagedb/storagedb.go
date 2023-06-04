@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
+	errDriver "go-url-shortener/internal/database/errors/pgxerrors"
 	"go-url-shortener/internal/logger"
 	"strings"
 
@@ -91,7 +92,8 @@ func (store *StorageShortLink) AddBatchShortLinks(ctx context.Context, data mode
 	nameTable := store.nameTableData
 	for _, row := range data {
 		// все изменения записываются в транзакцию
-		sqlAdd := "INSERT INTO " + nameTable + " (SHORT_LINK, FULL_URL) VALUES($1,$2)"
+		// игнорируем ошибку дублирующего FULL_URL, чтобы транзакция выполнилась при ее наличии
+		sqlAdd := "INSERT INTO " + nameTable + " (SHORT_LINK, FULL_URL) VALUES($1,$2) ON CONFLICT (FULL_URL) DO NOTHING"
 		_, err := tx.ExecContext(
 			ctx,
 			sqlAdd,
@@ -187,6 +189,10 @@ func (store *StorageShortLink) AddShortLinkForURL(ctx context.Context, fullURL, 
 	poolConn := store.dbHandler.GetPool()
 	_, err = poolConn.ExecContext(ctx, sqlAddRow, fullURL, shortLink)
 	if err != nil {
+		isUniqErr, _ := errDriver.IsUniqueViolation(err)
+		if isUniqErr {
+			err = modelsStorage.NewErrExistFullURLExt(fullURL)
+		}
 		logger.GetLogger().Errorln("ошибка: при выполении запроса " + sqlAddRow + ": " + err.Error())
 	}
 
@@ -363,8 +369,22 @@ func createShortLinkTable(tableName string) (err error) {
 		return
 	}
 
-	sqlCreateIndex := "CREATE INDEX IF NOT EXISTS FULL_URL_index_" + tableName + " ON " + tableName + " (FULL_URL)"
-	_, err = tx.ExecContext(ctx, sqlCreateIndex)
+	// делаем индекс для быстрого поиска полной ссылки по короткой ссылке
+	sqlCreateIndexShort := "CREATE INDEX IF NOT EXISTS SHORT_LINK_index_" + tableName + " ON " + tableName + " (SHORT_LINK)"
+	_, err = tx.ExecContext(ctx, sqlCreateIndexShort)
+	if err != nil {
+		errRoll := tx.Rollback()
+		if errRoll != nil {
+			logger.GetLogger().Error("ошибка: не смогли сделать Rollback транзакции: " + errRoll.Error())
+		}
+
+		err = fmt.Errorf("ошибка: не смогли создать индекс у поля SHORT_LINK: %w", err)
+		return
+	}
+
+	// делаем уникальный индекс поля FULL_URL как ограничение для целостности данных
+	sqlCreateIndexFull := "CREATE UNIQUE INDEX IF NOT EXISTS FULL_URL_index_" + tableName + " ON " + tableName + " (FULL_URL)"
+	_, err = tx.ExecContext(ctx, sqlCreateIndexFull)
 	if err != nil {
 		errRoll := tx.Rollback()
 		if errRoll != nil {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
@@ -50,24 +51,35 @@ func TestNewRouterHandlerServer(t *testing.T) {
 		dbHandler.Close()
 	}()
 
-	// заполняем хранилище
+	// заполняем данными хранилище
 	var storageShortLink = storageShort.NewStorageShorts()
-	storageShortLink.SetData(
+	testFullURL1 := "https://testSite.com"
+	testShortLink1 := "RRRTTTTT"
+	testFullURL2 := "https://dsdsdsdds.com"
+	testShortLink2 := "UUUUUUUU"
+	errSet := storageShortLink.SetData(
 		ctx,
 		modelsStorage.DataStorageShortLink{
-			"RRRTTTTT": modelsStorage.RowStorageShortLink{
-				ShortLink: "RRRTTTTT",
-				FullURL:   "https://testSite.com",
+			testShortLink1: modelsStorage.RowStorageShortLink{
+				ShortLink: testShortLink1,
+				FullURL:   testFullURL1,
 				UUID:      "1",
 			},
-			"UUUUUU": modelsStorage.RowStorageShortLink{
-				ShortLink: "UUUUUU",
-				FullURL:   "https://dsdsdsdds.com",
+			testShortLink2: modelsStorage.RowStorageShortLink{
+				ShortLink: testShortLink2,
+				FullURL:   testFullURL2,
 				UUID:      "2",
 			},
 		},
 	)
-	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
+	if errSet != nil {
+		err := errors.New("Тесты НЕ выполнены, не удалось установить тестовые данные")
+		logger.GetLogger().Debugln(err.Error())
+		return
+	}
+
+	//dataStore, _ := storageShortLink.GetShortLinks(ctx, nil)
+	//logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", dataStore)
 
 	// инициализируем сервис на конфиге
 	serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)
@@ -100,13 +112,35 @@ func TestNewRouterHandlerServer(t *testing.T) {
 		want             want
 	}{
 		{
-			name:             "get new short link",
+			name:             "add new short link",
 			serviceShortLink: serviceShortLink,
 			method:           http.MethodPost,
 			url:              "/",
-			body:             "https://google.com/",
+			body:             "https://11111google.com/",
 			want: want{
 				statusCode:  http.StatusCreated,
+				contentType: "text/plain; charset=utf-8",
+			},
+		},
+		{
+			name:             "add double short link",
+			serviceShortLink: serviceShortLink,
+			method:           http.MethodPost,
+			url:              "/",
+			body:             testFullURL1,
+			want: want{
+				statusCode:  http.StatusConflict,
+				contentType: "text/plain; charset=utf-8",
+			},
+		},
+		{
+			name:             "get new short link",
+			serviceShortLink: serviceShortLink,
+			method:           http.MethodPost,
+			url:              "/getAndAdd/",
+			body:             "https://11111google.com/",
+			want: want{
+				statusCode:  http.StatusOK,
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
@@ -114,24 +148,36 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			name:             "get double short link",
 			serviceShortLink: serviceShortLink,
 			method:           http.MethodPost,
-			url:              "/",
-			body:             "https://google.com/",
+			url:              "/getAndAdd/",
+			body:             testFullURL1,
 			want: want{
-				statusCode:  http.StatusCreated,
+				statusCode:  http.StatusOK,
 				contentType: "text/plain; charset=utf-8",
+			},
+		},
+		{
+			name:             "add and check short link into storage for full url",
+			serviceShortLink: serviceShortLink,
+			method:           http.MethodPost,
+			url:              "/",
+			body:             testFullURL2,
+			want: want{
+				statusCode:  http.StatusConflict,
+				contentType: "text/plain; charset=utf-8",
+				body:        hostService + "/" + testShortLink2,
 			},
 		},
 
 		{
-			name:             "check short link into storage for full url",
+			name:             "get and check short link into storage for full url",
 			serviceShortLink: serviceShortLink,
 			method:           http.MethodPost,
-			url:              "/",
-			body:             "https://dsdsdsdds.com",
+			url:              "/getAndAdd/",
+			body:             testFullURL2,
 			want: want{
-				statusCode:  http.StatusCreated,
+				statusCode:  http.StatusOK,
 				contentType: "text/plain; charset=utf-8",
-				body:        hostService + "/UUUUUU",
+				body:        hostService + "/" + testShortLink2,
 			},
 		},
 
@@ -140,7 +186,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			serviceShortLink: serviceShortLink,
 			method:           http.MethodGet,
 			url:              "/",
-			body:             "https://google.com/",
+			body:             testFullURL2,
 			want: want{
 				statusCode:  http.StatusBadRequest,
 				contentType: "text/plain; charset=utf-8",
@@ -151,11 +197,11 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			name:             "get full url by short link",
 			serviceShortLink: serviceShortLink,
 			method:           http.MethodGet,
-			url:              "/UUUUUU",
+			url:              "/" + testShortLink2,
 			body:             "",
 			want: want{
 				statusCode: http.StatusTemporaryRedirect,
-				location:   "https://dsdsdsdds.com",
+				location:   testFullURL2,
 			},
 		},
 
@@ -192,7 +238,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			want: want{
 				statusCode:  http.StatusOK,
 				contentType: "application/json",
-				body:        "\"original_url\":\"https://google.com/",
+				body:        "\"original_url\":\"" + testFullURL1,
 			},
 		},
 
@@ -244,7 +290,7 @@ func TestNewRouterHandlerServer(t *testing.T) {
 			req.URL = serverTest.URL + tt.url
 			res, err := req.Send()
 			if err != nil {
-				logger.GetLogger().Debug("Ошибка получения ответа:" + err.Error())
+				logger.GetLogger().Debug("Ошибка получения ответа: " + err.Error())
 			}
 
 			// проверяем код ответа
@@ -264,9 +310,12 @@ func TestNewRouterHandlerServer(t *testing.T) {
 				// получаем и проверяем тело запроса
 				resBody := res.Body()
 				res.RawBody().Close()
-				// получаем и проверяем тело запроса
-				if !assert.Equal(t, true, strings.Contains(string(resBody), tt.want.body)) {
-					logger.GetLogger().Debug("Пришло тело ответа:" + string(resBody) + ", ожидали: " + tt.want.body)
+
+				strBody := string(resBody)
+				isContains := strings.Contains(strBody, tt.want.body)
+				statusAssert := assert.Equal(t, true, isContains)
+				if statusAssert {
+					logger.GetLogger().Debug("Пришло тело ответа: " + strBody + ", ожидали: " + tt.want.body)
 				}
 
 			}

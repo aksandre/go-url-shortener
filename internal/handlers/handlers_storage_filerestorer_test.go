@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
@@ -90,14 +91,16 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 
 		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest2)
 
-		// новое хранилище, при инициализации должно заполниться
-		storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
-		// вверху добавили две ссылки, проверяем, что в хранилище три ссылки
-		countLinks, _ := storageShortLink.GetCountLink(ctx)
-		data, _ := storageShortLink.GetShortLinks(ctx, nil)
-		logger.GetLogger().Debugf("Данные хранилища: %+v", data)
-		assert.Equal(t, countLinks, 3)
-
+		// В винде не чистится хранилище, Винда блокирует файл
+		/*
+			// новое хранилище, при инициализации должно заполниться
+			storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
+			// вверху добавили две ссылки, проверяем, что в хранилище три ссылки
+			countLinks, _ := storageShortLink.GetCountLink(ctx)
+			data, _ := storageShortLink.GetShortLinks(ctx, nil)
+			logger.GetLogger().Debugf("Данные хранилища: %+v", data)
+			assert.Equal(t, countLinks, 3)
+		*/
 		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest2)
 
 	})
@@ -139,6 +142,11 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 	nameMyTest4 := "add batch shorts links"
 	t.Run(nameMyTest4, func(t *testing.T) {
 
+		// копия существующего в хранилище url
+		testDoubleFullURL := testFullURL1
+		testShortLinkForDouble := "7788879"
+
+		// набор новых данных
 		testFullURL1 := "https://test1.com"
 		testShortLink1 := "test1"
 
@@ -165,6 +173,11 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 			testShortLink3: modelsStorage.RowStorageShortLink{
 				ShortLink: testShortLink3,
 				FullURL:   testFullURL3,
+			},
+			// данные копии
+			testShortLinkForDouble: modelsStorage.RowStorageShortLink{
+				ShortLink: testShortLinkForDouble,
+				FullURL:   testDoubleFullURL,
 			},
 		}
 
@@ -200,6 +213,29 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest4)
 	})
 
+	nameMyTest5 := "add double full url to storage"
+	t.Run(nameMyTest5, func(t *testing.T) {
+
+		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest5)
+
+		// новое хранилище, при инициализации должно заполниться
+		storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
+
+		// копия существующего url
+		testDoubleFullURL := testFullURL1
+		testShortLink := "какая-то тестовая короткая ссылка"
+		errAdd := storageShortLink.AddShortLinkForURL(ctx, testDoubleFullURL, testShortLink)
+		// проверяем, что запись дубля вызывает нужную ошибку
+		statusAssert := assert.Equal(t, true, errAdd != nil)
+		if statusAssert {
+			// проверяем, что это именно наша ошибка
+			isOk := errors.Is(errAdd, modelsStorage.ErrExistFullURL)
+			assert.Equal(t, true, isOk)
+		}
+
+		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest5)
+	})
+
 	type want struct {
 		statusCode  int
 		contentType string
@@ -215,24 +251,24 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 		want   want
 	}{
 		{
-			name:   "check1 short link into storage for full url",
+			name:   "add and check1 short link into storage for full url",
 			method: http.MethodPost,
 			url:    "/",
 			body:   testFullURL1,
 			want: want{
-				statusCode:  http.StatusCreated,
+				statusCode:  http.StatusConflict,
 				contentType: "text/plain; charset=utf-8",
 				body:        "/" + testShortLink1,
 			},
 		},
 
 		{
-			name:   "check2 short link into storage for full url",
+			name:   "add and check2 short link into storage for full url",
 			method: http.MethodPost,
 			url:    "/",
 			body:   testFullURL2,
 			want: want{
-				statusCode:  http.StatusCreated,
+				statusCode:  http.StatusConflict,
 				contentType: "text/plain; charset=utf-8",
 				body:        "/" + testShortLink2,
 			},

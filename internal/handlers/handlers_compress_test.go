@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"go-url-shortener/internal/app/service"
 	"go-url-shortener/internal/config"
 	dbconn "go-url-shortener/internal/database/connect"
@@ -49,6 +50,7 @@ func TestNewRouterCompressHandler(t *testing.T) {
 	configApp.SetFileStoragePath(pathTempFile)
 	configApp.SetNameTableRestorer(nameTestTable)
 	// дебаг режим
+
 	configApp.SetLevelLogs(6)
 	//--- End устанавливаем данные конфигурации для теста
 
@@ -69,26 +71,41 @@ func TestNewRouterCompressHandler(t *testing.T) {
 		dbHandler.Close()
 	}()
 
+	// заполняем данными хранилище
 	var storageShortLink = storageShort.NewStorageShorts()
-	storageShortLink.SetData(
+	testFullURL1 := "https://testSite.com"
+	testShortLink1 := "RRRTTTTT"
+	testFullURL2 := "https://dsdsdsdds.com"
+	testShortLink2 := "UUUUUUUU"
+	errSet := storageShortLink.SetData(
 		ctx,
 		modelsStorage.DataStorageShortLink{
-			"RRRTTTTT": modelsStorage.RowStorageShortLink{
-				ShortLink: "RRRTTTTT",
-				FullURL:   "https://testSite.com",
+			testShortLink1: modelsStorage.RowStorageShortLink{
+				ShortLink: testShortLink1,
+				FullURL:   testFullURL1,
 				UUID:      "1",
 			},
-			"UUUUUU": modelsStorage.RowStorageShortLink{
-				ShortLink: "UUUUUU",
-				FullURL:   "https://dsdsdsdds.com",
+			testShortLink2: modelsStorage.RowStorageShortLink{
+				ShortLink: testShortLink2,
+				FullURL:   testFullURL2,
 				UUID:      "2",
 			},
 		},
 	)
-	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
+	if errSet != nil {
+		err := errors.New("Тесты НЕ выполнены, не удалось установить тестовые данные")
+		logger.GetLogger().Debugln(err.Error())
+		return
+	}
+
+	//dataStore, _ := storageShortLink.GetShortLinks(ctx, nil)
+	//logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", dataStore)
 
 	// инициализируем сервис на базе конфига
 	serviceShortLink := service.NewServiceShortLink(storageShortLink, configApp)
+
+	// хост сервиса
+	hostService := configApp.GetHostShortLink()
 
 	type want struct {
 		statusCode      int
@@ -109,7 +126,23 @@ func TestNewRouterCompressHandler(t *testing.T) {
 		want             want
 	}{
 		{
-			name:             "compress: get new short link - Content-Encoding: gzip",
+			name:             "compress: get short link - Content-Encoding: gzip",
+			serviceShortLink: serviceShortLink,
+			method:           http.MethodPost,
+			headers: http.Header{
+				"Content-Type":     []string{"text/plain"},
+				"Content-Encoding": []string{"gzip"},
+			},
+			url:  "/getAndAdd/",
+			body: testFullURL2,
+			want: want{
+				statusCode:  http.StatusOK,
+				contentType: "text/plain; charset=utf-8",
+				body:        "/" + testShortLink2,
+			},
+		},
+		{
+			name:             "compress: add double short link - Content-Encoding: gzip",
 			serviceShortLink: serviceShortLink,
 			method:           http.MethodPost,
 			headers: http.Header{
@@ -117,16 +150,16 @@ func TestNewRouterCompressHandler(t *testing.T) {
 				"Content-Encoding": []string{"gzip"},
 			},
 			url:  "/",
-			body: "https://dsdsdsdds.com",
+			body: testFullURL2,
 			want: want{
-				statusCode:  201,
+				statusCode:  http.StatusConflict,
 				contentType: "text/plain; charset=utf-8",
-				body:        "/UUUUUU",
+				body:        "/" + testShortLink2,
 			},
 		},
 
 		{
-			name:             "compress: get new short link by JSON - Content-Encoding: gzip",
+			name:             "compress: add double short link by JSON - Content-Encoding: gzip",
 			serviceShortLink: serviceShortLink,
 			method:           http.MethodPost,
 			headers: http.Header{
@@ -134,16 +167,16 @@ func TestNewRouterCompressHandler(t *testing.T) {
 				"Content-Encoding": []string{"gzip"},
 			},
 			url:  "/api/shorten",
-			body: "{\"url\":\"https://dsdsdsdds.com\"}",
+			body: "{\"url\":\"" + testFullURL1 + "\"}",
 			want: want{
-				statusCode:  http.StatusCreated,
+				statusCode:  http.StatusConflict,
 				contentType: "application/json",
-				body:        "{\"result\":\"http://localhost:8080/UUUUUU\"}",
+				body:        "{\"result\":\"" + hostService + "/" + testShortLink1 + "\"}",
 			},
 		},
 
 		{
-			name:             "compress: get new short link - Accept-Encoding: gzip",
+			name:             "compress: add double short link - Accept-Encoding: gzip",
 			serviceShortLink: serviceShortLink,
 			method:           http.MethodPost,
 			headers: http.Header{
@@ -151,11 +184,11 @@ func TestNewRouterCompressHandler(t *testing.T) {
 				"Accept-Encoding": []string{"gzip"},
 			},
 			url:  "/",
-			body: "https://dsdsdsdds.com",
+			body: testFullURL2,
 			want: want{
-				statusCode:     201,
+				statusCode:     http.StatusConflict,
 				contentType:    "text/plain; charset=utf-8",
-				decompressBody: "/UUUUUU",
+				decompressBody: "/" + testShortLink2,
 				headersResponse: http.Header{
 					"Content-Encoding": []string{"gzip"},
 				},
@@ -163,7 +196,7 @@ func TestNewRouterCompressHandler(t *testing.T) {
 		},
 
 		{
-			name:             "compress: get new short link by JSON - Accept-Encoding: gzip + Content-Encoding: gzip",
+			name:             "compress: add double short link by JSON - Accept-Encoding: gzip + Content-Encoding: gzip",
 			serviceShortLink: serviceShortLink,
 			method:           http.MethodPost,
 			headers: http.Header{
@@ -172,11 +205,11 @@ func TestNewRouterCompressHandler(t *testing.T) {
 				"Content-Encoding": []string{"gzip"},
 			},
 			url:  "/api/shorten",
-			body: "{\"url\":\"https://dsdsdsdds.com\"}",
+			body: "{\"url\":\"" + testFullURL2 + "\"}",
 			want: want{
-				statusCode:     http.StatusCreated,
+				statusCode:     http.StatusConflict,
 				contentType:    "application/json",
-				decompressBody: "{\"result\":\"http://localhost:8080/UUUUUU\"}",
+				decompressBody: "{\"result\":\"" + hostService + "/" + testShortLink2 + "\"}",
 				headersResponse: http.Header{
 					"Content-Encoding": []string{"gzip"},
 				},

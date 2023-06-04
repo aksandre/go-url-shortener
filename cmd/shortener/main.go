@@ -100,10 +100,14 @@ xhr.open("GET", '/MIy3I6N4', true);
 // shortenertest -test.v -test.run=^TestIteration5$ -binary-path=cmd/shortener/shortener -server-host=localhost -server-port=8050 -server-base-url="http://localhost:8050"
 
 // shortenertest -test.v -test.run=^TestIteration6$ -binary-path=cmd/shortener/shortener -server-port=8050 -file-storage-path=C:\Users\LENOVO\goLogs\urlShortener\storageLink.json -source-path=.
+
 // shortenertest -test.v -test.run=^TestIteration7$ -binary-path=cmd/shortener/shortener -server-port=8066 -file-storage-path=C:\Users\LENOVO\goLogs\urlShortener\storageLink.json -source-path=.
+// тест будет проваливаться, если установлены переменные окружения BASE_URL и SERVER_ADDRESS, их надо обнулить
+
 // shortenertest -test.v -test.run=^TestIteration8$ -binary-path=cmd/shortener/shortener -source-path=.
 // shortenertest -test.v -test.run=^TestIteration9$ -source-path=. -binary-path=cmd/shortener/shortener
 
 // shortenertest -test.v -test.run=^TestIteration10$ -source-path=. -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable
 // shortenertest -test.v -test.run=^TestIteration11$ -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable
 // shortenertest -test.v -test.run=^TestIteration12$ -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable
+// shortenertest -test.v -test.run=^TestIteration13$ -binary-path=cmd/shortener/shortener -database-dsn=postgres://postgres:123456789@localhost:5432/test_psg?sslmode=disable

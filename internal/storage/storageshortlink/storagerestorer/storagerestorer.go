@@ -98,7 +98,11 @@ func (store *StorageShortLink) SetData(ctx context.Context, data modelsStorage.D
 
 	err = store.AddBatchShortLinks(ctx, data)
 	if err != nil {
-		store.AddBatchShortLinks(ctx, oldData)
+		err = store.ClearStorage(ctx)
+		if err != nil {
+			err = store.AddBatchShortLinks(ctx, oldData)
+		}
+
 	}
 	return
 }
@@ -111,6 +115,16 @@ func (store *StorageShortLink) AddBatchShortLinks(ctx context.Context, data mode
 		fullURL := row.FullURL
 		err = store.AddShortLinkForURL(ctx, fullURL, shortLink)
 		if err != nil {
+
+			// если это ошибка, что мы не можем вставить дубль, то идем дальше
+			if errors.Is(err, modelsStorage.ErrExistFullURL) {
+				// обнуляем ошибку
+				// эта ошибка не должна прерывать дальнейшее выполнение клиентского кода,
+				// вызывающего у сервиса метод AddBatchShortLinks
+				err = nil
+				continue
+			}
+
 			err = errors.New("ошибка: групповая установка данных в хранилище была остановлена, произошла ошибка: " + err.Error())
 			break
 		}
@@ -142,7 +156,6 @@ func (store *StorageShortLink) GetShortLinks(ctx context.Context, options *model
 						UUID:      dataRow.UUID,
 					}
 				}
-
 			}
 		}
 
@@ -164,17 +177,23 @@ func (store *StorageShortLink) AddShortLinkForURL(ctx context.Context, fullURL, 
 	orderLink := len(store.Data) + 1
 	uuid := fmt.Sprintf("%d", orderLink)
 
+	// надо проверить, что fullURL еще не существует в нашем хранилище
+	for _, dataRow := range store.Data {
+		fullURLRow := dataRow.FullURL
+		if fullURLRow == fullURL {
+			err = modelsStorage.NewErrExistFullURLExt(fullURL)
+			break
+		}
+	}
+	if err != nil {
+		return
+	}
+
 	// важно
 	// если не отследить, что в хранилище уже есть запись с указанной короткой ссылкой,
 	// то данные в памяти просто обновятся с существующим ключом, а в рестороре добавится новая запись
 	// данные перестанут соответсвовать в памяти и в рестороре
 	if _, ok := store.Data[shortLink]; !ok {
-
-		store.Data[shortLink] = modelsStorage.RowStorageShortLink{
-			ShortLink: shortLink,
-			FullURL:   fullURL,
-			UUID:      uuid,
-		}
 
 		// делаем запись в ресторер
 		rowDataRestorer := restorer.RowDataRestorer{
@@ -182,7 +201,15 @@ func (store *StorageShortLink) AddShortLinkForURL(ctx context.Context, fullURL, 
 			FullURL:   fullURL,
 			UUID:      uuid,
 		}
-		store.Restorer.WriteRow(rowDataRestorer)
+
+		err = store.Restorer.WriteRow(rowDataRestorer)
+		if err == nil {
+			store.Data[shortLink] = modelsStorage.RowStorageShortLink{
+				ShortLink: shortLink,
+				FullURL:   fullURL,
+				UUID:      uuid,
+			}
+		}
 	}
 
 	return
@@ -240,7 +267,7 @@ func (store *StorageShortLink) Restore(ctx context.Context) (err error) {
 	store.clearMemoryData(ctx)
 
 	listRows, err := store.Restorer.ReadAll()
-	logger.GetLogger().Debugf("Прочитано коротких ссылок из файла хранилища: %d", len(listRows))
+	logger.GetLogger().Debugf("Прочитано коротких ссылок из Ресторера: %d", len(listRows))
 
 	if err != nil {
 		return

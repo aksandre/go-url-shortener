@@ -148,7 +148,7 @@ func (fileRestorer *FileRestorer) ClearRows() (err error) {
 	if err != nil {
 		logger.GetLogger().Error("ошибка открытия файла хранилища: " + err.Error())
 	} else {
-		err := file.Truncate(0)
+		err = file.Truncate(0)
 		if err != nil {
 			logger.GetLogger().Error("ошибка очистки файла хранилища: " + err.Error())
 		}

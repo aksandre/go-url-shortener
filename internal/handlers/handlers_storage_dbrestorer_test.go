@@ -39,14 +39,16 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 	ctx := context.TODO()
 
 	defer func() {
-		var storageShortLink, _ = storagerestorer.NewStorageShortsFromDB(nameTestTable)
-		err := storageShortLink.ClearStorage(ctx)
-		if err != nil {
-			logger.GetLogger().Debug("не смогли очистить данные хранилища: " + err.Error())
-		}
+		var storageShortLink, errCreate = storagerestorer.NewStorageShortsFromDB(nameTestTable)
+		if errCreate == nil {
+			err := storageShortLink.ClearStorage(ctx)
+			if err != nil {
+				logger.GetLogger().Debug("не смогли очистить данные хранилища: " + err.Error())
+			}
 
-		dbHandler := dbconn.GetDBHandler()
-		dbHandler.Close()
+			dbHandler := dbconn.GetDBHandler()
+			dbHandler.Close()
+		}
 	}()
 
 	// получаем значение подключения к БД
@@ -54,7 +56,6 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 	if configDatabaseDsn == "" {
 		err := errors.New("Тесты работы с базой данных не выполнялись: пустое значение DatabaseDsn")
 		logger.GetLogger().Debugln(err.Error())
-		assert.NoError(t, err)
 		return
 	}
 
@@ -155,6 +156,11 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 	nameMyTest4 := "add batch shorts links"
 	t.Run(nameMyTest4, func(t *testing.T) {
 
+		// копия существующего в хранилище url
+		testDoubleFullURL := testFullURL1
+		testShortLinkForDouble := "7788879"
+
+		// набор новых данных
 		testFullURL1 := "https://test1.com"
 		testShortLink1 := "test1"
 
@@ -181,6 +187,11 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 			testShortLink3: modelsStorage.RowStorageShortLink{
 				ShortLink: testShortLink3,
 				FullURL:   testFullURL3,
+			},
+			// данные копии
+			testShortLinkForDouble: modelsStorage.RowStorageShortLink{
+				ShortLink: testShortLinkForDouble,
+				FullURL:   testDoubleFullURL,
 			},
 		}
 
@@ -216,6 +227,29 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest4)
 	})
 
+	nameMyTest5 := "add double full url to storage"
+	t.Run(nameMyTest5, func(t *testing.T) {
+
+		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest5)
+
+		// новое хранилище, при инициализации должно заполниться
+		storageShortLink, _ := storagerestorer.NewStorageShortsFromDB(nameTestTable)
+
+		// копия существующего url
+		testDoubleFullURL := testFullURL1
+		testShortLink := "какая-то тестовая короткая ссылка"
+		errAdd := storageShortLink.AddShortLinkForURL(ctx, testDoubleFullURL, testShortLink)
+		// проверяем, что запись дубля вызывает нужную ошибку
+		statusAssert := assert.Equal(t, true, errAdd != nil)
+		if statusAssert {
+			// проверяем, что это именно наша ошибка
+			isOk := errors.Is(errAdd, modelsStorage.ErrExistFullURL)
+			assert.Equal(t, true, isOk)
+		}
+
+		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest5)
+	})
+
 	type want struct {
 		statusCode  int
 		contentType string
@@ -231,24 +265,24 @@ func TestDBRestorerStorageHandlerServer(t *testing.T) {
 		want   want
 	}{
 		{
-			name:   "check1 short link into storage for full url",
+			name:   "add and check1 short link into storage for full url",
 			method: http.MethodPost,
 			url:    "/",
 			body:   testFullURL1,
 			want: want{
-				statusCode:  http.StatusCreated,
+				statusCode:  http.StatusConflict,
 				contentType: "text/plain; charset=utf-8",
 				body:        "/" + testShortLink1,
 			},
 		},
 
 		{
-			name:   "check2 short link into storage for full url",
+			name:   "add and check2 short link into storage for full url",
 			method: http.MethodPost,
 			url:    "/",
 			body:   testFullURL2,
 			want: want{
-				statusCode:  http.StatusCreated,
+				statusCode:  http.StatusConflict,
 				contentType: "text/plain; charset=utf-8",
 				body:        "/" + testShortLink2,
 			},

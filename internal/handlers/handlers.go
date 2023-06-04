@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go-url-shortener/internal/logger"
 	modelsRequests "go-url-shortener/internal/models/requests"
 	modelsResponses "go-url-shortener/internal/models/responses"
 	modelsService "go-url-shortener/internal/models/service"
+	modelsStorage "go-url-shortener/internal/models/storageshortlink"
 	"io"
 	"strconv"
 
@@ -40,12 +42,14 @@ func (dh dataHandler) getUserListShortLinksByJSON(res http.ResponseWriter, req *
 		listFullURL = userData.ListFullURL
 	}
 
+	logger.GetLogger().Debugf("Список URL запрошенных пользователем: %+v", listFullURL)
+
 	ctx := context.TODO()
 	listShortLinks, err := dh.service.GetDataShortLinks(ctx, listFullURL)
-	logger.GetLogger().Debugf("Список существующих коротких ссылок %+v", listShortLinks)
+	//logger.GetLogger().Debugf("Данные коротких ссылок пользователя в хранилище: %+v", listShortLinks)
 
 	if err != nil {
-		err = fmt.Errorf("ошибка поулучения списка коротких ссылок: %w", err)
+		err = fmt.Errorf("ошибка получения списка коротких ссылок: %w", err)
 		strError := err.Error()
 		logger.GetLogger().Errorf("%s", strError)
 
@@ -70,77 +74,117 @@ func (dh dataHandler) getUserListShortLinksByJSON(res http.ResponseWriter, req *
 	}
 }
 
-// Генерация короткой ссылки по Json запросу
-func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Request) {
+// Записываем в ответ ошибочное сообщение в JSON виде
+func writeErrorJSONResponse(err error, res http.ResponseWriter) {
+	err = fmt.Errorf("ошибка сериализации тела запроса: %w", err)
+	strError := err.Error()
+	logger.GetLogger().Errorf("%s", strError)
 
+	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	res.WriteHeader(http.StatusBadRequest)
+	res.Write([]byte(strError))
+}
+
+// Записываем в ответ успешное сообщение в JSON виде
+func writeSuccessJSONResponse(serviceLink string, statusResponse int, res http.ResponseWriter) {
+	// данные ответа
+	dataResponse := modelsResponses.ResponseServiceLink{
+		Result: serviceLink,
+	}
+	bytesResult, _ := json.Marshal(&dataResponse)
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(statusResponse)
+	res.Write(bytesResult)
+}
+
+// Получаем из тестового тела запроса URL для генерации короткой ссылки
+func getFullURLFromJSONBody(res http.ResponseWriter, req *http.Request) (urlFull string, err error) {
 	// получаем тело из запроса
 	dataBody := req.Body
 
 	// данные запроса
 	dataRequest := modelsRequests.RequestServiceLink{}
-	if err := json.NewDecoder(dataBody).Decode(&dataRequest); err != nil {
-		err = fmt.Errorf("ошибка сериализации тела запроса: %w", err)
-		strError := err.Error()
-		logger.GetLogger().Errorf("%s", strError)
-
-		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte(strError))
+	if err = json.NewDecoder(dataBody).Decode(&dataRequest); err != nil {
 		return
 	}
 
 	// получаем адрес для которого формируем короткую ссылку
-	urlFull := string(dataRequest.URL)
+	urlFull = string(dataRequest.URL)
 	urlFull = strings.TrimSpace(urlFull)
-
 	if len(urlFull) == 0 {
-
-		strError := "Ошибка создания короткой ссылки: "
-		strError += "В запросе не указан URL, для которого надо сгенерировать короткую ссылку"
-		logger.GetLogger().Errorf("%s", strError)
-
-		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte(strError))
-		return
+		err = errors.New("ошибка: в запросе не указан URL, для которого надо сгенерировать короткую ссылку")
 	}
 
-	logger.GetLogger().Debugf("Для генерации короткой ссылки пришел Url: %s", urlFull)
+	logger.GetLogger().Debugf("Из запроса пришел Url: %s", urlFull)
+
+	return
+}
+
+// Умное получение короткой ссылки по Json запросу
+// Если ссылка не существует, то создаем
+func (dh dataHandler) getServiceLinkByJSON(res http.ResponseWriter, req *http.Request) {
+
+	urlFull, err := getFullURLFromJSONBody(res, req)
+	if err != nil {
+		writeErrorTextResponse(err, res)
+		return
+	}
 
 	ctx := context.TODO()
 	serviceLink, err := dh.service.GetServiceLinkByURL(ctx, urlFull)
 	logger.GetLogger().Debugf("Сделали короткую ссылку: %s", serviceLink)
 
-	if err != nil {
-		err = fmt.Errorf("ошибка создания короткой ссылки : %w", err)
-		strError := err.Error()
-		logger.GetLogger().Errorf("%s", strError)
-
-		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte(strError))
-		return
-
-	} else {
-
+	isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
+	if err == nil || isErrExist {
 		// добавляем ссылку в данные пользователя
 		errAdd := cookiesUserData.AddListFullURLToUser([]string{urlFull}, res, req)
 		if errAdd != nil {
 			logger.GetLogger().Errorf("Ошибка сохранения у пользователя списка запрошенных коротких ссылок %s :", errAdd.Error())
 		}
 
-		// данные ответа
-		dataResponse := modelsResponses.ResponseServiceLink{
-			Result: serviceLink,
-		}
-		bytesResult, _ := json.Marshal(&dataResponse)
+		statusResponse := http.StatusOK
 
-		res.Header().Set("Content-Type", "application/json")
-		res.WriteHeader(http.StatusCreated)
+		// записываем успешный ответ
+		writeSuccessJSONResponse(serviceLink, statusResponse, res)
 
-		res.Write(bytesResult)
+	} else {
+		writeErrorJSONResponse(err, res)
+	}
+}
+
+// Добавление нового URL в сервис по Json запросу
+func (dh dataHandler) addNewFullURLByJSON(res http.ResponseWriter, req *http.Request) {
+
+	urlFull, err := getFullURLFromJSONBody(res, req)
+	if err != nil {
+		writeErrorTextResponse(err, res)
+		return
 	}
 
+	ctx := context.TODO()
+	serviceLink, err := dh.service.AddNewFullURL(ctx, urlFull)
+	logger.GetLogger().Debugf("Сделали короткую ссылку: %s", serviceLink)
+
+	isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
+	if err == nil || isErrExist {
+		// добавляем ссылку в данные пользователя
+		errAdd := cookiesUserData.AddListFullURLToUser([]string{urlFull}, res, req)
+		if errAdd != nil {
+			logger.GetLogger().Errorf("Ошибка сохранения у пользователя списка запрошенных коротких ссылок %s :", errAdd.Error())
+		}
+
+		statusResponse := http.StatusCreated
+		if isErrExist {
+			statusResponse = http.StatusConflict
+		}
+
+		// записываем успешный ответ
+		writeSuccessJSONResponse(serviceLink, statusResponse, res)
+
+	} else {
+		writeErrorJSONResponse(err, res)
+	}
 }
 
 // Генерация группы коротких ссылок по Json запросу
@@ -261,56 +305,117 @@ func (dh dataHandler) getBatchServiceLinkByJSON(res http.ResponseWriter, req *ht
 
 }
 
-// Генерация короткой ссылки по Url в текстовом виде
+// Записываем в ответ ошибочное сообщение в текстовом виде
+func writeErrorTextResponse(err error, res http.ResponseWriter) {
+	strError := err.Error()
+	logger.GetLogger().Errorf("Ошибка чтения тела запроса: %s", strError)
+
+	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	res.WriteHeader(http.StatusBadRequest)
+	res.Write([]byte(strError))
+}
+
+// Записываем в ответ успешное сообщение в текстовом виде
+func writeSuccessTextResponse(result string, statusResponse int, res http.ResponseWriter) {
+	lenResult := len(result)
+	strLenResult := fmt.Sprintf("%d", lenResult)
+	res.Header().Set("Content-Length", strLenResult)
+	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	res.WriteHeader(statusResponse)
+
+	bytesResult := []byte(result)
+	res.Write(bytesResult)
+}
+
+// Получаем из тестового тела запроса URL для генерации короткой ссылки
+func getFullURLFromTextBody(res http.ResponseWriter, req *http.Request) (urlFull string, err error) {
+	// получаем тело из запроса и проводим его к строке
+	dataBody := req.Body
+	resultRead, err := io.ReadAll(dataBody)
+	dataBody.Close()
+
+	if err != nil {
+		return
+	}
+
+	urlFull = string(resultRead)
+	urlFull = strings.TrimSpace(urlFull)
+	if len(urlFull) == 0 {
+		err = errors.New("ошибка: в запросе не указан URL, для которого надо сгенерировать короткую ссылку")
+	}
+
+	logger.GetLogger().Debugf("Из запроса пришел Url: %s", urlFull)
+
+	return
+}
+
+// Умное получение короткой ссылки в текстовом виде
+// Если ссылка не существует, то создаем
 func (dh dataHandler) getServiceLinkByURL(res http.ResponseWriter, req *http.Request) {
 
 	// получаем тело из запроса и проводим его к строке
-	dataBody := req.Body
-	result, err := io.ReadAll(dataBody)
-	dataBody.Close()
+	urlFull, err := getFullURLFromTextBody(res, req)
 	if err != nil {
-		strError := err.Error()
-		logger.GetLogger().Errorf("Ошибка чтения тела запроса: %s", strError)
-
-		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte(strError))
+		writeErrorTextResponse(err, res)
+		return
 	}
-
-	urlFull := string(result)
-	urlFull = strings.TrimSpace(urlFull)
-	logger.GetLogger().Debugf("Для генерации короткой ссылки пришел Url: %s", urlFull)
 
 	ctx := context.TODO()
 	serviceLink, err := dh.service.GetServiceLinkByURL(ctx, urlFull)
 	logger.GetLogger().Debugf("Сделали короткую ссылку: %s", serviceLink)
 
-	if err != nil {
-		strError := err.Error()
-		logger.GetLogger().Errorf("Ошибка создания короткой ссылки : %s", strError)
-
-		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte(strError))
-
-	} else {
-
+	isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
+	if err == nil || isErrExist {
 		// добавляем ссылку в данные пользователя
 		errAdd := cookiesUserData.AddListFullURLToUser([]string{urlFull}, res, req)
 		if errAdd != nil {
 			logger.GetLogger().Errorf("Ошибка сохранения у пользователя списка запрошенных коротких ссылок %s :", errAdd.Error())
 		}
 
-		lenResult := len(serviceLink)
-		strLenResult := fmt.Sprintf("%d", lenResult)
-		res.Header().Set("Content-Length", strLenResult)
-		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		res.WriteHeader(http.StatusCreated)
+		statusResponse := http.StatusOK
 
-		bytesResult := []byte(serviceLink)
-		res.Write(bytesResult)
+		// записываем успешный ответ
+		writeSuccessTextResponse(serviceLink, statusResponse, res)
+
+	} else {
+		writeErrorTextResponse(err, res)
+	}
+}
+
+// Добавление нового URL в текстовом виде
+func (dh dataHandler) addNewFullURLByURL(res http.ResponseWriter, req *http.Request) {
+
+	// получаем тело из запроса и проводим его к строке
+	urlFull, err := getFullURLFromTextBody(res, req)
+	if err != nil {
+		writeErrorTextResponse(err, res)
+		return
 	}
 
+	ctx := context.TODO()
+	serviceLink, err := dh.service.AddNewFullURL(ctx, urlFull)
+	logger.GetLogger().Debugf("Сделали короткую ссылку: %s", serviceLink)
+
+	isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
+	if err == nil || isErrExist {
+		// добавляем ссылку в данные пользователя
+		errAdd := cookiesUserData.AddListFullURLToUser([]string{urlFull}, res, req)
+		if errAdd != nil {
+			logger.GetLogger().Errorf("Ошибка сохранения у пользователя списка запрошенных коротких ссылок %s :", errAdd.Error())
+		}
+
+		statusResponse := http.StatusCreated
+		if isErrExist {
+			statusResponse = http.StatusConflict
+		}
+
+		// записываем успешный ответ
+		writeSuccessTextResponse(serviceLink, statusResponse, res)
+
+	} else {
+		writeErrorTextResponse(err, res)
+	}
 }
 
 // Получение Url-адреса по короткой ссылке
@@ -368,12 +473,16 @@ func NewRouterHandler(serviceShortLink modelsService.ServiceShortInterface) http
 	}
 
 	router := chi.NewRouter()
-	router.Post("/", dataHandler.getServiceLinkByURL)
+	router.Post("/", dataHandler.addNewFullURLByURL)
 	router.Get("/{shortLink}", dataHandler.getFullLinkByShort)
 	router.Get("/api/user/urls", dataHandler.getUserListShortLinksByJSON)
-	router.Post("/api/shorten", dataHandler.getServiceLinkByJSON)
+	router.Post("/api/shorten", dataHandler.addNewFullURLByJSON)
 	router.Post("/api/shorten/batch", dataHandler.getBatchServiceLinkByJSON)
 	router.Get("/ping", dataHandler.getStatusPingDB)
+
+	// получение коротких ссылок без ошибок
+	router.Post("/getAndAdd/", dataHandler.getServiceLinkByURL)
+	router.Post("/api/shorten/getAndAdd/", dataHandler.getServiceLinkByJSON)
 
 	// когда метод не найден, то 400
 	funcNotFoundMethod := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
