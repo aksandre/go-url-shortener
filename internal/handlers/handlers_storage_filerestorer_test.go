@@ -54,7 +54,7 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 
 	// флаг, что критичная ошибка, после нее не будем продолжать тесты
 	isCriticalErr := false
-	nameMyTest := "Check create File storage"
+	nameMyTest := "check create File storage"
 	t.Run(nameMyTest, func(t *testing.T) {
 		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest)
 		_, err := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
@@ -86,21 +86,19 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 
 	logger.GetLogger().Debugf("Установили данные хранилища ссылок: %+v", storageShortLink)
 
-	nameMyTest2 := "Check count link after restore"
+	nameMyTest2 := "check count link after restore"
 	t.Run(nameMyTest2, func(t *testing.T) {
 
 		logger.GetLogger().Debugf("### Начало теста: %s", nameMyTest2)
 
-		// В винде не чистится хранилище, Винда блокирует файл
-		/*
-			// новое хранилище, при инициализации должно заполниться
-			storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
-			// вверху добавили две ссылки, проверяем, что в хранилище три ссылки
-			countLinks, _ := storageShortLink.GetCountLink(ctx)
-			data, _ := storageShortLink.GetShortLinks(ctx, nil)
-			logger.GetLogger().Debugf("Данные хранилища: %+v", data)
-			assert.Equal(t, countLinks, 3)
-		*/
+		// новое хранилище, при инициализации должно заполниться
+		storageShortLink, _ := storagerestorer.NewStorageShortsFromFileStorage(pathTempFile)
+		// вверху добавили две ссылки, проверяем, что в хранилище три ссылки
+		countLinks, _ := storageShortLink.GetCountLink(ctx)
+		data, _ := storageShortLink.GetShortLinks(ctx, nil)
+		logger.GetLogger().Debugf("Данные хранилища: %+v", data)
+		assert.Equal(t, countLinks, 3)
+
 		logger.GetLogger().Debugf("### Конец теста: %s", nameMyTest2)
 
 	})
@@ -261,7 +259,6 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 				body:        "/" + testShortLink1,
 			},
 		},
-
 		{
 			name:   "add and check2 short link into storage for full url",
 			method: http.MethodPost,
@@ -271,6 +268,26 @@ func TestFileRestorerStorageHandlerServer(t *testing.T) {
 				statusCode:  http.StatusConflict,
 				contentType: "text/plain; charset=utf-8",
 				body:        "/" + testShortLink2,
+			},
+		},
+		{
+			name:   "get full url by short link",
+			method: http.MethodGet,
+			url:    "/" + testShortLink2,
+			body:   "",
+			want: want{
+				statusCode: http.StatusTemporaryRedirect,
+				location:   testFullURL2,
+			},
+		},
+		{
+			name:   "add new short link from JSON request",
+			method: http.MethodPost,
+			url:    "/api/shorten",
+			body:   "{\"url\":\"https://55533test.com\"}",
+			want: want{
+				statusCode:  http.StatusCreated,
+				contentType: "application/json",
 			},
 		},
 	}

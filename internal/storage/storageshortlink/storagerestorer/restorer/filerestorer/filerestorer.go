@@ -35,7 +35,7 @@ func (fileRestorer *FileRestorer) openFile() (file *os.File, err error) {
 	pathFile := fileRestorer.pathfile
 
 	// открываем файл для записи в конец
-	file, err = os.OpenFile(pathFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
+	file, err = os.OpenFile(pathFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
 		return nil, err
 	}
@@ -144,16 +144,26 @@ func (fileRestorer *FileRestorer) ReadAll() (allRows []restorer.RowDataRestorer,
 
 // Очистить данные хранилища
 func (fileRestorer *FileRestorer) ClearRows() (err error) {
-	file, err := fileRestorer.openFile()
+
+	err = os.Truncate(fileRestorer.pathfile, 0)
 	if err != nil {
-		logger.GetLogger().Error("ошибка открытия файла хранилища: " + err.Error())
-	} else {
-		err = file.Truncate(0)
-		if err != nil {
-			logger.GetLogger().Error("ошибка очистки файла хранилища: " + err.Error())
-		}
-		file.Close()
+		logger.GetLogger().Error("ошибка очистки файла хранилища: " + err.Error())
 	}
+
+	/*
+		file, err := fileRestorer.openFile()
+		if err != nil {
+			logger.GetLogger().Error("ошибка открытия файла хранилища: " + err.Error())
+		} else {
+
+			err = file.Truncate(0)
+			if err != nil {
+				logger.GetLogger().Error("ошибка очистки файла хранилища: " + err.Error())
+			}
+			file.Close()
+
+		}*/
+
 	return
 }
 
@@ -171,7 +181,7 @@ func createRestoreFile(pathFile string) (pathRestoreFile string, err error) {
 	_, err = os.Stat(pathToFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = os.MkdirAll(pathToFile, 0755)
+			err = os.MkdirAll(pathToFile, 0777)
 			if err != nil && !os.IsExist(err) {
 				return
 			}

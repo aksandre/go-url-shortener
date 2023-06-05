@@ -129,7 +129,6 @@ func (service *ServiceShortLink) addNewFullURL(ctx context.Context, fullURL stri
 	//генерируем новую ссылку
 	lengthShort := service.lengthShortLink
 	shortLink = service.getRandString(lengthShort)
-	logger.GetLogger().Debugf("Сформировали новый код  %s", shortLink)
 
 	// добавим короткую ссылку в хранилище
 	err = service.storage.AddShortLinkForURL(ctx, fullURL, shortLink)
@@ -146,6 +145,8 @@ func (service *ServiceShortLink) addNewFullURL(ctx context.Context, fullURL stri
 			}
 		}
 	}
+
+	logger.GetLogger().Debugf("Сформировали короткий код: %s", shortLink)
 
 	return
 }
@@ -176,13 +177,14 @@ func (service *ServiceShortLink) getShortLinkByURL(ctx context.Context, fullURL 
 			//такой url еще не приходил, генерируем новую ссылку
 			lengthShort := service.lengthShortLink
 			shortLink = service.getRandString(lengthShort)
-			logger.GetLogger().Debugf("Сформировали новый код  %s", shortLink)
 
 			// добавим короткую ссылку в хранилище
 			err = service.storage.AddShortLinkForURL(ctx, fullURL, shortLink)
 			logger.GetLogger().Debugf("Содержание storage %+v", service.storage)
 		}
 	}
+
+	logger.GetLogger().Debugf("Сформировали короткий код: %s", shortLink)
 
 	return
 }

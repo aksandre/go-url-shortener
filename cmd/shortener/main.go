@@ -96,6 +96,7 @@ xhr.open("GET", '/MIy3I6N4', true);
 
 // shortenertest -test.v -test.run=^TestIteration1$ -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
 // shortenertest -test.v -test.run=^TestIteration2$ -source-path=.
+// shortenertest -test.v -test.run=^TestIteration3$ -source-path=.
 // shortenertest -test.v -test.run=^TestIteration4$ -source-path=. -binary-path=C:\GoProjects\golang\project\go-url-shortener\cmd\shortener\shortener.exe
 // shortenertest -test.v -test.run=^TestIteration5$ -binary-path=cmd/shortener/shortener -server-host=localhost -server-port=8050 -server-base-url="http://localhost:8050"
 
