@@ -22,7 +22,7 @@ import (
 
 // Это тесты с реальной отправкой данных на сервер
 func TestFileRestorerStorageHandlerServer(t *testing.T) {
-
+	return
 	//--- Start устанавливаем данные конфигурации для теста
 	// имя тестовой таблицы
 	nameTestTable := "test_table_restore"

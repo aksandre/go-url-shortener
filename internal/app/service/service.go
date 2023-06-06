@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
 
@@ -191,6 +192,9 @@ func (service *ServiceShortLink) getShortLinkByURL(ctx context.Context, fullURL 
 
 // Получаем Url-адрес по короткой ссылке
 func (service *ServiceShortLink) GetFullLinkByShort(ctx context.Context, shortLink string) (fullURL string, err error) {
+
+	dataStore, _ := service.storage.GetShortLinks(ctx, nil)
+	fmt.Printf("Данные хранилища ссылок: %+v \n", dataStore)
 
 	fullURL, err = service.storage.GetFullLinkByShort(ctx, shortLink)
 	if err != nil {

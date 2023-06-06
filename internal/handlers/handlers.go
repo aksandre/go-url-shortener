@@ -423,10 +423,12 @@ func (dh dataHandler) getFullLinkByShort(res http.ResponseWriter, req *http.Requ
 	shortLink := chi.URLParam(req, "shortLink")
 	shortLink = strings.TrimSpace(shortLink)
 	logger.GetLogger().Debugf("Пришла короткая ссылка: %s", shortLink)
+	fmt.Printf("Пришла короткая ссылка: %s \n", shortLink)
 
 	ctx := context.TODO()
 	fullLink, err := dh.service.GetFullLinkByShort(ctx, shortLink)
 	logger.GetLogger().Debugf("Получили полную ссылку: %s", fullLink)
+	fmt.Printf("Получили полную ссылку: %s \n", fullLink)
 
 	if err != nil {
 		strErr := err.Error()
