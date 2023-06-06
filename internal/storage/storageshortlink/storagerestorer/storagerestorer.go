@@ -195,15 +195,16 @@ func (store *StorageShortLink) AddShortLinkForURL(ctx context.Context, fullURL, 
 	// данные перестанут соответсвовать в памяти и в рестороре
 	if _, ok := store.Data[shortLink]; !ok {
 
-		// делаем запись в ресторер
 		rowDataRestorer := restorer.RowDataRestorer{
 			ShortLink: shortLink,
 			FullURL:   fullURL,
 			UUID:      uuid,
 		}
 
+		// делаем запись в ресторер
 		err = store.Restorer.WriteRow(rowDataRestorer)
 		if err == nil {
+			// делаем запись в память
 			store.Data[shortLink] = modelsStorage.RowStorageShortLink{
 				ShortLink: shortLink,
 				FullURL:   fullURL,

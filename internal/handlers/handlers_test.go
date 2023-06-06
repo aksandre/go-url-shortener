@@ -112,6 +112,19 @@ func TestNewRouterHandlerNoServer(t *testing.T) {
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
+
+		{
+			name:             "add new2 short link",
+			serviceShortLink: serviceShortLink,
+			method:           http.MethodPost,
+			url:              "/",
+			body:             "https://22222google.com/",
+			want: want{
+				statusCode:  http.StatusCreated,
+				contentType: "text/plain; charset=utf-8",
+			},
+		},
+
 		{
 			name:             "add double short link",
 			serviceShortLink: serviceShortLink,

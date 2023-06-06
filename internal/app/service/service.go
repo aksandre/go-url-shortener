@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
+	"time"
 
 	"errors"
 
@@ -45,9 +46,13 @@ func (service *ServiceShortLink) getRandString(length int) string {
 		"abcdefghijklmnopqrstuvwxyz" +
 		"0123456789")
 
+	nanoTimeNow := time.Now().UnixNano()
+	sourceRand := rand.NewSource(nanoTimeNow)
+	randEntity := rand.New(sourceRand)
+
 	var b strings.Builder
 	for i := 0; i < length; i++ {
-		b.WriteRune(chars[rand.Intn(len(chars))])
+		b.WriteRune(chars[randEntity.Intn(len(chars))])
 	}
 	result := b.String()
 	return result
@@ -131,6 +136,9 @@ func (service *ServiceShortLink) addNewFullURL(ctx context.Context, fullURL stri
 	lengthShort := service.lengthShortLink
 	shortLink = service.getRandString(lengthShort)
 
+	fmt.Printf("Создали новый короткий код: %s \n", shortLink)
+	logger.GetLogger().Debugf("Создали новый короткий код: %s", shortLink)
+
 	// добавим короткую ссылку в хранилище
 	err = service.storage.AddShortLinkForURL(ctx, fullURL, shortLink)
 	if err != nil {
@@ -150,7 +158,8 @@ func (service *ServiceShortLink) addNewFullURL(ctx context.Context, fullURL stri
 		}
 	}
 	fmt.Printf("Пришла ссылка: %s \n", fullURL)
-	fmt.Printf("Сформировали короткий код: %s", shortLink)
+	fmt.Printf("Установленный короткий код: %s \n", shortLink)
+
 	dataStore, _ := service.storage.GetShortLinks(ctx, nil)
 	fmt.Printf("Данные хранилища ссылок: %+v \n", dataStore)
 

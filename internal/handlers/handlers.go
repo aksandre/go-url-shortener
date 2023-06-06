@@ -165,7 +165,7 @@ func (dh dataHandler) addNewFullURLByJSON(res http.ResponseWriter, req *http.Req
 	ctx := context.TODO()
 	serviceLink, err := dh.service.AddNewFullURL(ctx, urlFull)
 	logger.GetLogger().Debugf("Сделали короткую ссылку: %s", serviceLink)
-	fmt.Printf("Сделали короткую ссылку: %s", serviceLink)
+	fmt.Printf("Сделали короткую ссылку: %s \n", serviceLink)
 
 	isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
 	if err == nil || isErrExist {
