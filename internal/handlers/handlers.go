@@ -165,7 +165,6 @@ func (dh dataHandler) addNewFullURLByJSON(res http.ResponseWriter, req *http.Req
 	ctx := context.TODO()
 	serviceLink, err := dh.service.AddNewFullURL(ctx, urlFull)
 	logger.GetLogger().Debugf("Сделали короткую ссылку: %s", serviceLink)
-	fmt.Printf("Сделали короткую ссылку: %s \n", serviceLink)
 
 	isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
 	if err == nil || isErrExist {
@@ -424,12 +423,10 @@ func (dh dataHandler) getFullLinkByShort(res http.ResponseWriter, req *http.Requ
 	shortLink := chi.URLParam(req, "shortLink")
 	shortLink = strings.TrimSpace(shortLink)
 	logger.GetLogger().Debugf("Пришла короткая ссылка: %s", shortLink)
-	fmt.Printf("Пришла короткая ссылка: %s \n", shortLink)
 
 	ctx := context.TODO()
 	fullLink, err := dh.service.GetFullLinkByShort(ctx, shortLink)
 	logger.GetLogger().Debugf("Получили полную ссылку: %s", fullLink)
-	fmt.Printf("Получили полную ссылку: %s \n", fullLink)
 
 	if err != nil {
 		strErr := err.Error()

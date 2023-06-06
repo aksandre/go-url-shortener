@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"go-url-shortener/internal/config"
 	"go-url-shortener/internal/logger"
 	"time"
@@ -135,15 +134,11 @@ func (service *ServiceShortLink) addNewFullURL(ctx context.Context, fullURL stri
 	//генерируем новую ссылку
 	lengthShort := service.lengthShortLink
 	shortLink = service.getRandString(lengthShort)
-
-	fmt.Printf("Создали новый короткий код: %s \n", shortLink)
-	logger.GetLogger().Debugf("Создали новый короткий код: %s", shortLink)
+	logger.GetLogger().Debugf("Создали новый случайный короткий код: %s", shortLink)
 
 	// добавим короткую ссылку в хранилище
 	err = service.storage.AddShortLinkForURL(ctx, fullURL, shortLink)
 	if err != nil {
-
-		fmt.Printf("Ошибка добавления: %s \n", err.Error())
 
 		// если это ошибка дублирования записи, то получаем существующую короткую ссылку
 		isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
@@ -157,13 +152,6 @@ func (service *ServiceShortLink) addNewFullURL(ctx context.Context, fullURL stri
 			}
 		}
 	}
-	fmt.Printf("Пришла ссылка: %s \n", fullURL)
-	fmt.Printf("Установленный короткий код: %s \n", shortLink)
-
-	dataStore, _ := service.storage.GetShortLinks(ctx, nil)
-	fmt.Printf("Данные хранилища ссылок: %+v \n", dataStore)
-
-	logger.GetLogger().Debugf("Сформировали короткий код: %s", shortLink)
 
 	return
 }
@@ -208,9 +196,6 @@ func (service *ServiceShortLink) getShortLinkByURL(ctx context.Context, fullURL 
 
 // Получаем Url-адрес по короткой ссылке
 func (service *ServiceShortLink) GetFullLinkByShort(ctx context.Context, shortLink string) (fullURL string, err error) {
-
-	dataStore, _ := service.storage.GetShortLinks(ctx, nil)
-	fmt.Printf("Данные хранилища ссылок: %+v \n", dataStore)
 
 	fullURL, err = service.storage.GetFullLinkByShort(ctx, shortLink)
 	if err != nil {
