@@ -114,7 +114,7 @@ func (service *ServiceShortLink) getShortLinkWithHost(shortLink string) (shortLi
 func (service *ServiceShortLink) AddNewFullURL(ctx context.Context, fullURL string) (serviceLink string, err error) {
 
 	shortLink, err := service.addNewFullURL(ctx, fullURL)
-	// если это ошибка дублирования записи, то поулчаем существующую короткую ссылку
+	// если это ошибка дублирования записи, то получаем существующую короткую ссылку
 	isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
 	if err == nil || isErrExist {
 		if shortLink != "" {
@@ -134,7 +134,10 @@ func (service *ServiceShortLink) addNewFullURL(ctx context.Context, fullURL stri
 	// добавим короткую ссылку в хранилище
 	err = service.storage.AddShortLinkForURL(ctx, fullURL, shortLink)
 	if err != nil {
-		// если это ошибка дублирования записи, то поулчаем существующую короткую ссылку
+
+		fmt.Printf("Ошибка добавления: %s \n", err.Error())
+
+		// если это ошибка дублирования записи, то получаем существующую короткую ссылку
 		isErrExist := errors.Is(err, modelsStorage.ErrExistFullURL)
 		if isErrExist {
 			shortLinkExist, errGet := service.storage.GetShortLinkByURL(ctx, fullURL)
@@ -146,6 +149,10 @@ func (service *ServiceShortLink) addNewFullURL(ctx context.Context, fullURL stri
 			}
 		}
 	}
+	fmt.Printf("Пришла ссылка: %s \n", fullURL)
+	fmt.Printf("Сформировали короткий код: %s", shortLink)
+	dataStore, _ := service.storage.GetShortLinks(ctx, nil)
+	fmt.Printf("Данные хранилища ссылок: %+v \n", dataStore)
 
 	logger.GetLogger().Debugf("Сформировали короткий код: %s", shortLink)
 
