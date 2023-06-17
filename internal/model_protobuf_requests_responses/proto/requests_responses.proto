@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+// имя proto-пакета и версия
+package shortener_requests.v1;
+
+// опция задаёт пакет для генерируемого файла
+// файл будет создаваться в родительской директории с именем пакета model_requests_responses
+option go_package = "./model_requests_responses";
+
+message RequestServiceLink {
+  string url = 1;
+}
+
+message ResponseServiceLink {
+  string result = 1;
+}
+
+
+message ResponseListShortLinks {
+  string short_url = 1;
+  string original_url = 2;
+}
